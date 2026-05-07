@@ -88,19 +88,30 @@ const config: Config = {
         mono: ["var(--font-geist-mono)", "ui-monospace", "monospace"],
       },
       fontSize: {
+        // Fluid type — clamp(min, viewport-based, max) so titles shrink
+        // to fit phone screens without per-callsite breakpoint overrides.
         "display-xl": [
-          "48px",
+          "clamp(30px, 6.5vw, 48px)",
           { lineHeight: "1.1", letterSpacing: "-0.02em", fontWeight: "800" },
         ],
-        "headline-lg": ["32px", { lineHeight: "1.2", fontWeight: "700" }],
-        "headline-md": ["24px", { lineHeight: "1.3", fontWeight: "600" }],
+        "headline-lg": [
+          "clamp(22px, 4.5vw, 32px)",
+          { lineHeight: "1.2", fontWeight: "700" },
+        ],
+        "headline-md": [
+          "clamp(18px, 3.5vw, 24px)",
+          { lineHeight: "1.3", fontWeight: "600" },
+        ],
         "body-main": ["16px", { lineHeight: "1.6", fontWeight: "400" }],
         "body-sm": ["14px", { lineHeight: "1.5", fontWeight: "400" }],
         "label-caps": [
           "12px",
           { lineHeight: "1", letterSpacing: "0.05em", fontWeight: "700" },
         ],
-        "editorial-quote": ["22px", { lineHeight: "1.5", fontWeight: "400" }],
+        "editorial-quote": [
+          "clamp(18px, 3vw, 22px)",
+          { lineHeight: "1.5", fontWeight: "400" },
+        ],
       },
       spacing: {
         base: "8px",
