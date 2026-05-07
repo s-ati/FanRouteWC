@@ -25,6 +25,7 @@ import { groupFromStage } from "@/lib/groups";
 import { COUNTRY_COOKIE, readPickedCountry } from "@/lib/country-cookie";
 import { getTeamByCode } from "@/lib/wc2026-teams";
 import { occupancyVerdict } from "@/lib/crowd/occupancy-copy";
+import { teamHeroImages } from "@/lib/team-imagery";
 
 export const revalidate = 60;
 
@@ -206,7 +207,7 @@ export default async function HomePage() {
             countdownText: kickoffCountdown(next),
             kickoffLocal: formatKickoffLocal(next),
             hostStadium: next.played_in_bay_area ? "Levi's Stadium" : null,
-            backgroundUrl: null,
+            backgroundImages: teamHeroImages(pickedCode),
             ctaLabel: "Where to watch →",
             ctaHref: `/matches/${next.match_id}`,
             eyebrow: `${displayName.toUpperCase()}'S NEXT MATCH`,

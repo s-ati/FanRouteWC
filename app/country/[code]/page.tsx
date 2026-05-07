@@ -23,6 +23,7 @@ import {
   getRankedBarsForCountry,
 } from "@/lib/queries";
 import type { Fixture } from "@/lib/types";
+import { teamHeroImages } from "@/lib/team-imagery";
 import { SF_OFFICIAL_FAN_ZONES, getTeamByCode } from "@/lib/wc2026-teams";
 
 export const revalidate = 60;
@@ -206,7 +207,7 @@ export default async function CountryDetailPage({
             countdownText: kickoffCountdown(next),
             kickoffLocal: formatKickoffLocal(next),
             hostStadium: next.played_in_bay_area ? "Levi's Stadium" : null,
-            backgroundUrl: null,
+            backgroundImages: teamHeroImages(upperCode),
             ctaLabel: "Where to watch →",
             ctaHref: `/matches/${next.match_id}`,
             eyebrow: `${displayName.toUpperCase()}'S NEXT MATCH`,

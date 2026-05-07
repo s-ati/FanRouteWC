@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { flagEmoji } from "@/lib/flags";
 import Chip from "./Chip";
+import TeamHeroBackground from "./TeamHeroBackground";
 
 export type MatchHeroData = {
   matchId: string;
@@ -13,29 +14,39 @@ export type MatchHeroData = {
   kickoffLocal?: string | null;
   hostStadium?: string | null; // "Levi's Stadium"
   backgroundUrl?: string | null;
+  backgroundImages?: string[]; // when provided, renders a crossfade slideshow
   ctaLabel?: string;
   ctaHref?: string;
   eyebrow?: string;            // "NEXT MATCH" / "USA's next match"
 };
 
-// Big featured match card. Background photo + dark gradient + display-xl
-// teams + countdown + CTA. Sits at the top of the personalized home.
+// Big featured match card. Background (single image OR slideshow) + dark
+// gradient + display-xl teams + countdown + CTA. Sits at the top of the
+// personalized home.
 export default function MatchHero({ data }: { data: MatchHeroData }) {
-  const bg = data.backgroundUrl
-    ? { backgroundImage: `url(${data.backgroundUrl})` }
-    : undefined;
+  const hasSlideshow =
+    Array.isArray(data.backgroundImages) && data.backgroundImages.length > 0;
+  const singleBg =
+    !hasSlideshow && data.backgroundUrl
+      ? { backgroundImage: `url(${data.backgroundUrl})` }
+      : undefined;
+  const hasAnyBg = hasSlideshow || !!singleBg;
 
   return (
     <section
       className="relative flex w-full items-end overflow-hidden rounded-xl bg-surface-container p-container-padding md:aspect-[21/9]"
       style={{
-        ...bg,
+        ...singleBg,
         backgroundSize: "cover",
         backgroundPosition: "center",
-        minHeight: bg ? undefined : "320px",
-        aspectRatio: bg ? undefined : "4/3",
+        minHeight: hasAnyBg ? undefined : "320px",
+        aspectRatio: hasAnyBg ? undefined : "4/3",
       }}
     >
+      {hasSlideshow ? (
+        <TeamHeroBackground images={data.backgroundImages!} />
+      ) : null}
+
       {/* dark overlay for legibility */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
 
