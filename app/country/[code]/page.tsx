@@ -6,7 +6,7 @@ import Chip from "@/components/Chip";
 import MatchHero from "@/components/MatchHero";
 import SectionHeader from "@/components/SectionHeader";
 import StandingsTable, { type StandingsRow } from "@/components/StandingsTable";
-import UpcomingMatchCard from "@/components/UpcomingMatchCard";
+import MatchesGrid from "@/components/MatchesGrid";
 import { COUNTRY_COOKIE, readPickedCountry } from "@/lib/country-cookie";
 import { occupancyVerdict } from "@/lib/crowd/occupancy-copy";
 import { flagEmoji } from "@/lib/flags";
@@ -24,6 +24,7 @@ import {
 } from "@/lib/queries";
 import type { Fixture } from "@/lib/types";
 import { teamHeroImages } from "@/lib/team-imagery";
+import { fixtureToMatchData } from "@/lib/wc2026-matches";
 import { SF_OFFICIAL_FAN_ZONES, getTeamByCode } from "@/lib/wc2026-teams";
 
 export const revalidate = 60;
@@ -82,16 +83,6 @@ function findTeamGroup(all: Fixture[], code: string): {
   return null;
 }
 
-function kickoffLabel(f: Fixture): string {
-  return new Date(f.kickoff_local).toLocaleString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
 function minutesToKickoff(f: Fixture, now = new Date()): number {
   return Math.max(
     0,
@@ -127,12 +118,21 @@ export default async function CountryDetailPage({
   const flag = flagEmoji(upperCode);
 
   const teamFixtures = fixturesForTeam(allFixtures, upperCode);
-  const upcoming = teamFixtures.filter(
+  const teamUpcoming = teamFixtures.filter(
     (f) => new Date(f.kickoff_utc).getTime() >= Date.now(),
   );
-  const next = upcoming[0];
-  const restUpcoming = upcoming.slice(1, 4);
+  const next = teamUpcoming[0];
   const minsToNext = next ? minutesToKickoff(next) : null;
+
+  // Pass the full upcoming schedule into MatchesGrid; the grid pre-filters to
+  // this country, but the dropdown lets the visitor zoom out to all matches.
+  const allUpcoming = allFixtures
+    .filter((f) => new Date(f.kickoff_utc).getTime() >= Date.now())
+    .sort(
+      (a, b) =>
+        new Date(a.kickoff_utc).getTime() - new Date(b.kickoff_utc).getTime(),
+    )
+    .map(fixtureToMatchData);
 
   const group = findTeamGroup(allFixtures, upperCode);
   const groupRows: StandingsRow[] = group
@@ -215,31 +215,17 @@ export default async function CountryDetailPage({
         />
       ) : null}
 
-      {/* Upcoming */}
-      {restUpcoming.length ? (
+      {/* Upcoming — pre-filtered to this country, dropdown widens scope */}
+      {allUpcoming.length ? (
         <section>
           <SectionHeader
             title={`Upcoming ${displayName} matches`}
             eyebrow="Schedule"
           />
-          <ul role="list" className="grid grid-cols-1 gap-gutter md:grid-cols-3">
-            {restUpcoming.map((f) => (
-              <li key={f.match_id}>
-                <UpcomingMatchCard
-                  data={{
-                    matchId: f.match_id,
-                    homeCode: f.home_team,
-                    awayCode: f.away_team,
-                    stage: stageLabel(f.stage).toUpperCase(),
-                    kickoffLabel: kickoffLabel(f),
-                    hostStadium: f.played_in_bay_area
-                      ? "Levi's Stadium"
-                      : null,
-                  }}
-                />
-              </li>
-            ))}
-          </ul>
+          <MatchesGrid
+            matches={allUpcoming}
+            defaultTeamFilter={upperCode}
+          />
         </section>
       ) : null}
 

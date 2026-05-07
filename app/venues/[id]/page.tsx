@@ -1,19 +1,20 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import AtmosphereGrid, { type AtmosphereCell } from "@/components/AtmosphereGrid";
+import AtmosphereGrid from "@/components/AtmosphereGrid";
 import BarCard, { type BarCardData } from "@/components/BarCard";
 import Chip from "@/components/Chip";
-import OccupancyBadge, { colorFromConfidence } from "@/components/OccupancyBadge";
+import OccupancyBar, { pctFromConfidence } from "@/components/OccupancyBar";
 import ReportButtons from "@/components/ReportButtons";
 import SectionHeader from "@/components/SectionHeader";
 import UpcomingMatchCard from "@/components/UpcomingMatchCard";
+import { fixtureToMatchData } from "@/lib/wc2026-matches";
 import VenueMapLazy from "@/components/VenueMapLazy";
 import { readPickedCountry } from "@/lib/country-cookie";
 import { calculateCrowdConfidence } from "@/lib/crowd/calculate";
 import { occupancyVerdict } from "@/lib/crowd/occupancy-copy";
 import { flagEmoji } from "@/lib/flags";
-import { stageLabel, venueQualifiesForFixture } from "@/lib/matchday";
+import { venueQualifiesForFixture } from "@/lib/matchday";
 import {
   getAllFixtures,
   getAllVenues,
@@ -42,16 +43,6 @@ function splitNotes(notes: string | null): string[] {
     .map((s) => s.trim())
     .filter(Boolean)
     .map((s) => (s.endsWith(".") ? s : `${s}.`));
-}
-
-function kickoffLabel(f: Fixture): string {
-  return new Date(f.kickoff_local).toLocaleString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
 }
 
 export default async function VenuePage({ params }: Params) {
@@ -95,64 +86,20 @@ export default async function VenuePage({ params }: Params) {
     ? await calculateCrowdConfidence(venue, referenceFixture)
     : null;
 
-  const verdict = crowdNow
-    ? {
-        color: colorFromConfidence(crowdNow.crowd),
-        label:
-          crowdNow.crowd === "open"
-            ? "Open"
-            : crowdNow.crowd === "room"
-              ? "Comfortable"
-              : crowdNow.crowd === "filling_up"
-                ? "Filling up"
-                : crowdNow.crowd === "packed"
-                  ? "Tight"
-                  : "Full",
-        note: "",
-      }
-    : null;
-
-  const atmosphereCells: AtmosphereCell[] = [
-    {
-      icon: "trip",
-      label: "Setting",
-      value: venue.indoor_outdoor.replace(/^\w/, (c) => c.toUpperCase()),
-    },
-    {
-      icon: "groups",
-      label: "Vibe",
-      value: venue.atmosphere?.vibe
-        ? venue.atmosphere.vibe.replace(/^\w/, (c) => c.toUpperCase())
-        : "TBD",
-    },
-    {
-      icon: "volume_up",
-      label: "Sound",
-      value: venue.atmosphere?.sound_on_likelihood
-        ? venue.atmosphere.sound_on_likelihood.replace(/^\w/, (c) =>
-            c.toUpperCase(),
-          )
-        : "TBD",
-    },
-    {
-      icon: "people",
-      label: "Capacity",
-      value:
-        venue.capacity_estimate != null
-          ? venue.capacity_estimate.toLocaleString()
-          : "TBD",
-    },
-    {
-      icon: "restaurant",
-      label: "Food",
-      value:
-        venue.food_available === true
-          ? "Yes"
-          : venue.food_available === false
-            ? "No"
-            : "TBD",
-    },
-  ];
+  // Translate the live CrowdConfidence into a 0–100 % of capacity. Drives
+  // both the "Right now" bar and the Capacity card in Venue Pulse.
+  const livePct = crowdNow ? pctFromConfidence(crowdNow.crowd) : null;
+  const liveLabel = !crowdNow
+    ? null
+    : crowdNow.crowd === "open"
+      ? "Plenty of room"
+      : crowdNow.crowd === "room"
+        ? "Comfortable"
+        : crowdNow.crowd === "filling_up"
+          ? "Filling up fast"
+          : crowdNow.crowd === "packed"
+            ? "Tight squeeze"
+            : "At capacity";
 
   const venueTypeLabel = VENUE_TYPE_LABEL[venue.type] ?? venue.type;
 
@@ -202,24 +149,38 @@ export default async function VenuePage({ params }: Params) {
       </header>
 
       {/* Status / right now */}
-      {verdict ? (
+      {livePct != null && liveLabel ? (
         <section className="rounded-lg border border-outline-variant bg-surface-container-lowest p-stack-lg">
-          <div className="flex flex-wrap items-center justify-between gap-stack-md">
-            <div className="flex flex-col gap-stack-sm">
-              <p className="text-label-caps font-bold uppercase tracking-[0.05em] text-on-surface-variant">
-                Right now
-              </p>
-              <OccupancyBadge color={verdict.color} label={verdict.label} />
-            </div>
+          <div className="flex items-center justify-between gap-stack-md">
+            <p className="text-label-caps font-bold uppercase tracking-[0.05em] text-on-surface-variant">
+              Right now
+            </p>
             <ReportButtons venueId={venue.id} />
+          </div>
+          <div className="mt-stack-md">
+            <OccupancyBar pct={livePct} label={liveLabel} size="lg" />
           </div>
         </section>
       ) : null}
 
-      {/* Atmosphere & Guide */}
+      {/* Venue Pulse — atmosphere dashboard */}
       <section>
-        <SectionHeader title="Atmosphere & Guide" eyebrow="Inside" />
-        <AtmosphereGrid cells={atmosphereCells} />
+        <SectionHeader title="Venue Pulse" eyebrow="Atmosphere right now" />
+        <AtmosphereGrid
+          data={{
+            setting: venue.indoor_outdoor,
+            vibe: venue.atmosphere?.vibe ?? null,
+            soundLikelihood:
+              (venue.atmosphere?.sound_on_likelihood as
+                | "high"
+                | "medium"
+                | "low"
+                | null) ?? null,
+            capacityMax: venue.capacity_estimate,
+            capacityCurrentPct: livePct,
+            foodAvailable: venue.food_available,
+          }}
+        />
       </section>
 
       {/* Description / Map */}
@@ -312,22 +273,11 @@ export default async function VenuePage({ params }: Params) {
         ) : (
           <ul
             role="list"
-            className="grid grid-cols-1 gap-gutter sm:grid-cols-2 lg:grid-cols-3"
+            className="grid grid-cols-1 gap-gutter md:grid-cols-2 lg:grid-cols-3"
           >
             {matchesToShow.slice(0, 9).map((f) => (
               <li key={f.match_id}>
-                <UpcomingMatchCard
-                  data={{
-                    matchId: f.match_id,
-                    homeCode: f.home_team,
-                    awayCode: f.away_team,
-                    stage: stageLabel(f.stage).toUpperCase(),
-                    kickoffLabel: kickoffLabel(f),
-                    hostStadium: f.played_in_bay_area
-                      ? "Levi's Stadium"
-                      : null,
-                  }}
-                />
+                <UpcomingMatchCard data={fixtureToMatchData(f)} />
               </li>
             ))}
           </ul>

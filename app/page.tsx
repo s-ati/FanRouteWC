@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import KnockoutBracket from "@/components/KnockoutBracket";
 import MatchHero from "@/components/MatchHero";
-import UpcomingMatchCard from "@/components/UpcomingMatchCard";
+import MatchesGrid from "@/components/MatchesGrid";
 import StandingsTable, { type StandingsRow } from "@/components/StandingsTable";
 import BarCard, { type BarCardData } from "@/components/BarCard";
 import SectionHeader from "@/components/SectionHeader";
@@ -22,6 +22,7 @@ import {
   stageLabel,
 } from "@/lib/matchday";
 import { groupFromStage } from "@/lib/groups";
+import { fixtureToMatchData } from "@/lib/wc2026-matches";
 import { COUNTRY_COOKIE, readPickedCountry } from "@/lib/country-cookie";
 import { getTeamByCode } from "@/lib/wc2026-teams";
 import { occupancyVerdict } from "@/lib/crowd/occupancy-copy";
@@ -83,18 +84,6 @@ function findTeamGroup(all: Fixture[], code: string): {
   return null;
 }
 
-function kickoffLabel(f: Fixture): string {
-  // Compact label like "Today, 18:00" or "Wed Jun 12, 6:00 PM"
-  const d = new Date(f.kickoff_local);
-  return d.toLocaleString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
 function minutesToKickoff(f: Fixture, now = new Date()): number {
   return Math.max(
     0,
@@ -148,11 +137,20 @@ export default async function HomePage() {
   const displayName = country?.name ?? team?.name ?? pickedCode;
 
   const teamFixtures = fixturesForTeam(allFixtures, pickedCode);
-  const upcoming = teamFixtures.filter(
+  const teamUpcoming = teamFixtures.filter(
     (f) => new Date(f.kickoff_utc).getTime() >= Date.now(),
   );
-  const next = upcoming[0];
-  const restUpcoming = upcoming.slice(1, 4);
+  const next = teamUpcoming[0];
+
+  // "Upcoming Matches" section now shows ALL upcoming WC matches by default;
+  // the picked team is still highlighted via the hero above.
+  const allUpcoming = allFixtures
+    .filter((f) => new Date(f.kickoff_utc).getTime() >= Date.now())
+    .sort(
+      (a, b) =>
+        new Date(a.kickoff_utc).getTime() - new Date(b.kickoff_utc).getTime(),
+    )
+    .map(fixtureToMatchData);
 
   const group = findTeamGroup(allFixtures, pickedCode);
   const groupRows: StandingsRow[] = group
@@ -225,31 +223,11 @@ export default async function HomePage() {
         </div>
       )}
 
-      {/* Upcoming */}
-      {restUpcoming.length ? (
+      {/* Upcoming — full WC2026 schedule, filterable */}
+      {allUpcoming.length ? (
         <section id="schedule">
-          <SectionHeader title="Upcoming matches" eyebrow={displayName} />
-          <ul
-            role="list"
-            className="grid grid-cols-1 gap-gutter md:grid-cols-3"
-          >
-            {restUpcoming.map((f) => (
-              <li key={f.match_id}>
-                <UpcomingMatchCard
-                  data={{
-                    matchId: f.match_id,
-                    homeCode: f.home_team,
-                    awayCode: f.away_team,
-                    stage: stageLabel(f.stage).toUpperCase(),
-                    kickoffLabel: kickoffLabel(f),
-                    hostStadium: f.played_in_bay_area
-                      ? "Levi's Stadium"
-                      : null,
-                  }}
-                />
-              </li>
-            ))}
-          </ul>
+          <SectionHeader title="Upcoming matches" eyebrow="2026 World Cup" />
+          <MatchesGrid matches={allUpcoming} />
         </section>
       ) : null}
 

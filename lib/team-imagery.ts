@@ -25,6 +25,17 @@ const TEAM_FOLDERS: Record<string, string> = {
   ITA: "italy",
   KOR: "korea",
   JPN: "japan",
+  IRL: "ireland",
+  SCO: "scotland",
+  AUS: "australia",
+  BEL: "belgium",
+  SUI: "switzerland",
+  GHA: "ghana",
+  SEN: "senegal",
+  NGA: "nigeria",
+  CIV: "ivory-coast",
+  URU: "uruguay",
+  MAR: "morocco",
 };
 
 const IMAGE_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
