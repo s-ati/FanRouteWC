@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  background: theme("colors.paper");
+  color: theme("colors.ink-body");
+  font-family: var(--font-geist-sans), "SF Pro Text", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "ss01", "ss02", "cv11";
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Grain overlay — lifted from fanroute-landing for tactile warmth. */
+.grain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  opacity: 0.32;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.04 0 0 0 0 0.1 0 0 0 0 0.17 0 0 0 0.32 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  mix-blend-mode: multiply;
+}
+
+/* Ambient gradients — the same navy-blue + warm-amber radials the landing uses. */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  pointer-events: none;
+  z-index: -1;
+  filter: blur(80px);
+  opacity: 0.55;
+}
+body::before {
+  top: -160px;
+  left: -120px;
+  width: 520px;
+  height: 520px;
+  background: radial-gradient(circle, rgba(43, 77, 232, 0.12), transparent 60%);
+}
+body::after {
+  top: 240px;
+  right: -180px;
+  width: 560px;
+  height: 560px;
+  background: radial-gradient(circle, rgba(199, 87, 31, 0.09), transparent 60%);
+}
+
+em {
+  font-style: normal;
+  color: theme("colors.accent");
+  font-weight: 600;
+}
