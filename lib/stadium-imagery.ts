@@ -1,4 +1,4 @@
-// City → stadium name + background image URL.
+// City / stadium → background image URL.
 //
 // All imagery is locked to verified soccer-stadium photography (no more
 // generic-sport returns). Cards apply a grayscale filter on top so the
@@ -6,6 +6,8 @@
 //
 // Drop your own files into public/images/stadiums/<slug>.jpg and update
 // the URL below to swap from external CDN.
+
+import { WC2026_STADIUMS, getStadiumById } from "./wc2026-stadiums";
 
 export type StadiumImagery = {
   city: string;        // Display name shown on the card
@@ -18,59 +20,50 @@ export type StadiumImagery = {
 const SOCCER_STADIUM =
   "https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&q=80&w=1200";
 
-const BAY_AREA: StadiumImagery = {
-  city: "San Francisco Bay Area",
-  stadium: "Levi's Stadium",
-  imageUrl: SOCCER_STADIUM,
-};
-
 const GENERIC: StadiumImagery = {
   city: "Match venue",
   stadium: "Stadium",
   imageUrl: SOCCER_STADIUM,
 };
 
-// 16 WC2026 host cities + a few common labels. Values are display strings
-// the rest of the app can pass in; lookup is forgiving. All entries share
-// the verified soccer-stadium photo until per-city imagery is curated.
-const CITY_MAP: Record<string, StadiumImagery> = {
-  "san francisco": BAY_AREA,
-  "san francisco bay area": BAY_AREA,
-  "santa clara": BAY_AREA,
-  "bay area": BAY_AREA,
-  "los angeles": {
-    city: "Los Angeles",
-    stadium: "SoFi Stadium",
-    imageUrl: SOCCER_STADIUM,
-  },
-  "mexico city": {
-    city: "Mexico City",
-    stadium: "Estadio Azteca",
-    imageUrl: SOCCER_STADIUM,
-  },
-  houston: {
-    city: "Houston",
-    stadium: "NRG Stadium",
-    imageUrl: SOCCER_STADIUM,
-  },
-};
+// City-name lookup (forgiving). Some callers only know the host city
+// label; map them through the WC2026_STADIUMS catalog by city match.
+const CITY_LOOKUP: Record<string, string> = (() => {
+  const m: Record<string, string> = {
+    "san francisco": "levis-bay-area",
+    "san francisco bay area": "levis-bay-area",
+    "santa clara": "levis-bay-area",
+    "bay area": "levis-bay-area",
+    sf: "levis-bay-area",
+  };
+  for (const s of WC2026_STADIUMS) {
+    m[s.city.toLowerCase()] = s.id;
+  }
+  return m;
+})();
 
 export function isBayArea(city: string | null | undefined): boolean {
   if (!city) return false;
-  const k = city.trim().toLowerCase();
-  return (
-    k === "san francisco" ||
-    k === "san francisco bay area" ||
-    k === "santa clara" ||
-    k === "bay area" ||
-    k === "sf"
-  );
+  const id = CITY_LOOKUP[city.trim().toLowerCase()];
+  if (!id) return false;
+  return getStadiumById(id)?.isBayArea ?? false;
 }
 
 export function stadiumImagery(
   city: string | null | undefined,
 ): StadiumImagery {
   if (!city) return GENERIC;
-  const hit = CITY_MAP[city.trim().toLowerCase()];
-  return hit ?? GENERIC;
+  const id = CITY_LOOKUP[city.trim().toLowerCase()];
+  if (!id) return GENERIC;
+  const s = getStadiumById(id);
+  if (!s) return GENERIC;
+  return { city: s.city, stadium: s.name, imageUrl: SOCCER_STADIUM };
+}
+
+// Direct stadium-id lookup — preferred when the caller already has the
+// catalog id (e.g. the schedule constant).
+export function stadiumImageryById(id: string): StadiumImagery {
+  const s = getStadiumById(id);
+  if (!s) return GENERIC;
+  return { city: s.city, stadium: s.name, imageUrl: SOCCER_STADIUM };
 }

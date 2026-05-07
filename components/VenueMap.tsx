@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { useEffect, useMemo, useState } from "react";
+import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import L, { type LatLngExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -10,41 +10,69 @@ export type MapMarker = {
   name: string;
   lat: number;
   lng: number;
-  tier: "primary" | "secondary" | "fallback";
+  /** legacy tier; kept so existing call sites still compile */
+  tier?: "primary" | "secondary" | "fallback";
+  /** true → gold pulse marker; false → silver diamond bar marker */
+  isOfficial?: boolean;
   href?: string;
   subtitle?: string;
+  /** atmosphere tag — e.g. "Hardcore", "Party"; rendered in the glass preview */
+  vibe?: string | null;
+  /** photo for glass preview */
+  photoUrl?: string | null;
 };
 
 type Props = {
   markers: MapMarker[];
   center?: [number, number];
   zoom?: number;
-  highlightId?: string;
+  /** id of the marker that should be highlighted/bouncing — driven by parent
+   *  hover state (e.g. the bar list below the map sets this) */
+  activeId?: string | null;
+  /** alias of activeId, retained for legacy callers */
+  highlightId?: string | null;
+  /** notify parent when a marker is hovered (for map-to-list sync) */
+  onMarkerHover?: (id: string | null) => void;
+  /** dark hub style with custom markers + glass preview */
+  variant?: "hub" | "classic";
 };
 
-const TIER_COLOR: Record<MapMarker["tier"], string> = {
-  primary: "#0B7A4E",
-  secondary: "#D97706",
-  fallback: "#6B7280",
-};
+function isOfficialMarker(m: MapMarker): boolean {
+  if (m.isOfficial != null) return m.isOfficial;
+  // Fallback heuristic for legacy callers: tier `primary` ≈ official.
+  return m.tier === "primary";
+}
 
-function circleIcon(color: string, highlighted: boolean) {
-  const size = highlighted ? 22 : 16;
-  const borderWidth = highlighted ? 3 : 2;
+function buildMarkerIcon(m: MapMarker, active: boolean): L.DivIcon {
+  const official = isOfficialMarker(m);
+  const cls = [
+    "fr-marker",
+    official ? "fr-marker--official" : "fr-marker--bar",
+    active ? "fr-marker--active" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const html = official
+    ? `<span class="fr-pulse"></span><span class="fr-dot"></span>`
+    : `<span class="fr-dot"></span>`;
   return L.divIcon({
-    className: "venue-marker",
-    html: `<span style="
-      display:inline-block;
-      width:${size}px;
-      height:${size}px;
-      background:${color};
-      border:${borderWidth}px solid #F4EFE3;
-      border-radius:9999px;
-      box-shadow:0 2px 6px rgba(15,23,32,0.25);
-    "></span>`,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
+    className: cls,
+    html,
+    iconSize: [0, 0],
+    iconAnchor: [0, 0],
   });
+}
+
+/** Captures the underlying Leaflet map instance and hands it back to the
+ *  parent so we can render overlay UI (the glass preview) outside the
+ *  MapContainer subtree, where plain JSX is hidden. */
+function MapBridge({ onMap }: { onMap: (m: L.Map | null) => void }) {
+  const map = useMap();
+  useEffect(() => {
+    onMap(map);
+    return () => onMap(null);
+  }, [map, onMap]);
+  return null;
 }
 
 function FitBounds({ markers }: { markers: MapMarker[] }) {
@@ -55,69 +83,199 @@ function FitBounds({ markers }: { markers: MapMarker[] }) {
       map.setView([markers[0].lat, markers[0].lng], 14);
       return;
     }
-    const bounds = L.latLngBounds(markers.map((m) => [m.lat, m.lng] as LatLngExpression));
-    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+    const bounds = L.latLngBounds(
+      markers.map((m) => [m.lat, m.lng] as LatLngExpression),
+    );
+    map.fitBounds(bounds, { padding: [48, 48], maxZoom: 14 });
   }, [map, markers]);
   return null;
+}
+
+function MarkerLayer({
+  markers,
+  activeId,
+  onHover,
+  setHovered,
+}: {
+  markers: MapMarker[];
+  activeId: string | null;
+  onHover?: (id: string | null) => void;
+  setHovered: (m: MapMarker | null) => void;
+}) {
+  const icons = useMemo(() => {
+    const cache = new Map<string, L.DivIcon>();
+    for (const m of markers) {
+      cache.set(m.id, buildMarkerIcon(m, m.id === activeId));
+    }
+    return cache;
+  }, [markers, activeId]);
+
+  return (
+    <>
+      {markers.map((m) => (
+        <Marker
+          key={m.id}
+          position={[m.lat, m.lng]}
+          icon={icons.get(m.id)!}
+          eventHandlers={{
+            mouseover: () => {
+              setHovered(m);
+              onHover?.(m.id);
+            },
+            mouseout: () => {
+              setHovered(null);
+              onHover?.(null);
+            },
+            click: () => {
+              if (m.href) window.location.assign(m.href);
+            },
+          }}
+        />
+      ))}
+    </>
+  );
 }
 
 export default function VenueMap({
   markers,
   center = [37.7749, -122.4194],
-  zoom = 12,
-  highlightId,
+  zoom = 12.5,
+  activeId = null,
+  highlightId = null,
+  onMarkerHover,
+  variant = "classic",
 }: Props) {
-  const icons = useMemo(() => {
-    const cache = new Map<string, L.DivIcon>();
-    for (const m of markers) {
-      const highlighted = m.id === highlightId;
-      const key = `${m.tier}-${highlighted ? "hi" : "lo"}`;
-      if (!cache.has(key)) cache.set(key, circleIcon(TIER_COLOR[m.tier], highlighted));
+  // Treat the legacy highlightId as activeId so existing callers (the venue
+  // detail map) keep working without code changes.
+  const externalActive = activeId ?? highlightId;
+  const [mapInst, setMapInst] = useState<L.Map | null>(null);
+  const [hovered, setHovered] = useState<MapMarker | null>(null);
+  const [previewPos, setPreviewPos] = useState<{ x: number; y: number } | null>(
+    null,
+  );
+
+  // Hovered marker (from map) takes precedence over external activeId so the
+  // pulse follows whatever the user is currently pointing at.
+  const effectiveActive = hovered?.id ?? externalActive;
+
+  // Resolve the active marker so the preview can render even when the parent
+  // is the one driving hover (list → map sync).
+  const previewMarker = useMemo(() => {
+    if (hovered) return hovered;
+    if (externalActive) return markers.find((m) => m.id === externalActive) ?? null;
+    return null;
+  }, [hovered, externalActive, markers]);
+
+  // Re-project preview lat/lng → screen on every move/zoom.
+  useEffect(() => {
+    if (!mapInst || !previewMarker) {
+      setPreviewPos(null);
+      return;
     }
-    return cache;
-  }, [markers, highlightId]);
+    const update = () => {
+      const p = mapInst.latLngToContainerPoint([
+        previewMarker.lat,
+        previewMarker.lng,
+      ]);
+      setPreviewPos({ x: p.x, y: p.y });
+    };
+    update();
+    mapInst.on("move zoom resize", update);
+    return () => {
+      mapInst.off("move zoom resize", update);
+    };
+  }, [mapInst, previewMarker]);
+
+  // Both variants use CARTO's "dark" basemap so the map blends with the
+  // Deep Navy FIFA palette. Hub variant drops the labels and stacks a
+  // labels-only layer at lower opacity for that "screen" look.
+  const tileUrl =
+    variant === "hub"
+      ? "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png"
+      : "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+  const labelUrl =
+    "https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png";
 
   return (
-    <div className="h-[360px] w-full overflow-hidden rounded-md border border-rule">
+    <div
+      className={
+        variant === "hub"
+          ? "venue-hub-map relative h-[440px] w-full overflow-hidden"
+          : "h-[360px] w-full overflow-hidden rounded-md border border-rule"
+      }
+    >
       <MapContainer
         center={center}
         zoom={zoom}
         scrollWheelZoom={false}
+        zoomControl={variant === "hub"}
         className="h-full w-full"
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+          url={tileUrl}
         />
+        {variant === "hub" ? <TileLayer url={labelUrl} opacity={0.5} /> : null}
+        <MapBridge onMap={setMapInst} />
         <FitBounds markers={markers} />
-        {markers.map((m) => {
-          const highlighted = m.id === highlightId;
-          const icon = icons.get(`${m.tier}-${highlighted ? "hi" : "lo"}`)!;
-          return (
-            <Marker key={m.id} position={[m.lat, m.lng]} icon={icon}>
-              <Popup>
-                <div className="font-sans">
-                  <div className="text-xs uppercase tracking-wide text-ink-muted">
-                    {m.tier}
-                  </div>
-                  <div className="font-display text-base">{m.name}</div>
-                  {m.subtitle ? (
-                    <div className="mt-1 text-xs text-ink-muted">{m.subtitle}</div>
-                  ) : null}
-                  {m.href ? (
-                    <a
-                      href={m.href}
-                      className="mt-2 inline-block text-xs underline underline-offset-2"
-                    >
-                      View details →
-                    </a>
-                  ) : null}
-                </div>
-              </Popup>
-            </Marker>
-          );
-        })}
+        <MarkerLayer
+          markers={markers}
+          activeId={effectiveActive}
+          onHover={onMarkerHover}
+          setHovered={setHovered}
+        />
       </MapContainer>
+
+      {/* Glass preview — sibling overlay, absolutely positioned. */}
+      {variant === "hub" && previewMarker && previewPos ? (
+        <GlassPreview marker={previewMarker} pos={previewPos} />
+      ) : null}
+    </div>
+  );
+}
+
+function GlassPreview({
+  marker,
+  pos,
+}: {
+  marker: MapMarker;
+  pos: { x: number; y: number };
+}) {
+  const official = isOfficialMarker(marker);
+  const tag = marker.vibe ?? (official ? "Official" : "Bar");
+  return (
+    <div
+      className="fr-preview"
+      style={{
+        left: pos.x - 120,
+        top: pos.y - 28,
+        transform: "translateY(-100%)",
+      }}
+    >
+      <div className="fr-preview__card">
+        {marker.photoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={marker.photoUrl}
+            alt={marker.name}
+            className="fr-preview__photo"
+          />
+        ) : (
+          <div className="fr-preview__photo fr-preview__photo--placeholder">
+            {official ? "⭐" : "🍺"}
+          </div>
+        )}
+        <div className="fr-preview__body">
+          <div
+            className={`fr-preview__tag ${
+              official ? "" : "fr-preview__tag--bar"
+            }`}
+          >
+            {official ? "● Official" : "◆ Bar"} · {tag}
+          </div>
+          <div className="fr-preview__name">{marker.name}</div>
+        </div>
+      </div>
     </div>
   );
 }

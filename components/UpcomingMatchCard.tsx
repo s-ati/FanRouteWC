@@ -77,19 +77,29 @@ export default function UpcomingMatchCard({
         }}
       />
 
-      {/* Purple/lavender → black gradient overlay; brightens on hover */}
+      {/* Navy multiply wash — sinks the stadium image into the page bg
+          per the Deep Navy FIFA spec (#00175F at 60%). */}
+      <div
+        aria-hidden
+        className="absolute inset-0"
+        style={{
+          backgroundColor: "rgba(0, 23, 95, 0.6)",
+          mixBlendMode: "multiply",
+        }}
+      />
+      {/* Cyan-on-navy diagonal accent that brightens on hover */}
       <div
         aria-hidden
         className="absolute inset-0 transition-opacity duration-500 group-hover:opacity-90"
         style={{
           background:
-            "linear-gradient(to right, rgba(109, 40, 217, 0.85), rgba(0, 0, 0, 0.45))",
+            "linear-gradient(to right, rgba(0, 23, 95, 0.85), rgba(0, 163, 224, 0.18))",
         }}
       />
-      {/* Bottom darken so the glass panel always has a high-contrast bed */}
+      {/* Bottom darken so the glass meta panel always has a clean bed */}
       <div
         aria-hidden
-        className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent"
+        className="absolute inset-0 bg-gradient-to-t from-[#00175F] via-[rgba(0,23,95,0.4)] to-transparent"
       />
 
       {/* Top: group chip + bay-area chip */}
@@ -133,7 +143,7 @@ export default function UpcomingMatchCard({
       <div className="relative z-10 m-3 rounded-lg border border-white/20 bg-white/15 p-4 backdrop-blur-md shadow-lg">
         <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.12em] text-white">
           <span>{data.dateLabel}</span>
-          <span>{data.timeLabel}</span>
+          {data.timeLabel ? <span>{data.timeLabel}</span> : <span className="text-white/55">TBD</span>}
         </div>
 
         <div className="mt-2 flex items-center justify-between text-[12px] text-white/90">

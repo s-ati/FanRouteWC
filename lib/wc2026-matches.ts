@@ -102,6 +102,29 @@ export function teamsFromMatches(matches: MatchCardData[]): string[] {
 // `groupFromStage` is re-exported for callers that already have a fixture.
 export { groupFromStage };
 
+// Merge a Supabase fixture list into a static schedule list. Where the
+// fixture has the same matchId, its kickoff time + isBayArea flag override
+// the schedule's placeholder. Schedule entries with no fixture match keep
+// the static date and "TBD" time.
+export function mergeFixturesIntoSchedule(
+  schedule: MatchCardData[],
+  fixtures: Fixture[],
+): MatchCardData[] {
+  if (fixtures.length === 0) return schedule;
+  const byId = new Map(fixtures.map((f) => [f.match_id, f]));
+  return schedule.map((m) => {
+    const f = byId.get(m.matchId);
+    if (!f) return m;
+    return {
+      ...m,
+      kickoffUtc: f.kickoff_utc,
+      dateLabel: formatPTDate(f.kickoff_local),
+      timeLabel: formatPTTime(f.kickoff_local),
+      isBayArea: m.isBayArea || f.played_in_bay_area,
+    };
+  });
+}
+
 // ---------------------------------------------------------------------------
 // STARTER_MATCHES — small constant array kept in sync with the user's
 // requested example data. Used when the live Supabase fixtures list is

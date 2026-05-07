@@ -47,8 +47,14 @@ export default function MatchHero({ data }: { data: MatchHeroData }) {
         <TeamHeroBackground images={data.backgroundImages!} />
       ) : null}
 
-      {/* dark overlay for legibility */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+      {/* Deep Navy FIFA wash — blends the stadium image into the navy
+          page bg instead of relying on a pure-black gradient. */}
+      <div
+        className="absolute inset-0"
+        style={{ backgroundColor: "rgba(0, 23, 95, 0.6)", mixBlendMode: "multiply" }}
+        aria-hidden
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#00175F] via-[rgba(0,23,95,0.45)] to-transparent" />
 
       <div className="relative z-10 flex w-full flex-col items-start justify-between gap-stack-lg md:flex-row md:items-end">
         <div className="space-y-stack-md text-white">

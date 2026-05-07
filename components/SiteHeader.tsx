@@ -17,7 +17,14 @@ export default async function SiteHeader() {
   const pickedFlag = picked ? flagEmoji(picked) : null;
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-outline-variant bg-background/85 backdrop-blur-md">
+    <header
+      className="sticky top-0 z-40 w-full border-b border-outline-variant"
+      style={{
+        backgroundColor: "rgba(0, 23, 95, 0.7)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+      }}
+    >
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-gutter px-container-padding py-4">
         {/* Brand — small gradient mark + Manrope ExtraBold wordmark */}
         <Link href="/" className="inline-flex items-center gap-2.5 text-on-surface">

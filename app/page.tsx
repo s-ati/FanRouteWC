@@ -9,6 +9,7 @@ import BarCard, { type BarCardData } from "@/components/BarCard";
 import SectionHeader from "@/components/SectionHeader";
 import Chip from "@/components/Chip";
 import TeamPicker from "@/components/TeamPicker";
+import VenueHub, { type HubVenue } from "@/components/VenueHub";
 import {
   getAllFixtures,
   getCountryByCode,
@@ -22,7 +23,8 @@ import {
   stageLabel,
 } from "@/lib/matchday";
 import { groupFromStage } from "@/lib/groups";
-import { fixtureToMatchData } from "@/lib/wc2026-matches";
+import { mergeFixturesIntoSchedule } from "@/lib/wc2026-matches";
+import { getScheduleAsMatchCards } from "@/lib/wc2026-schedule";
 import { COUNTRY_COOKIE, readPickedCountry } from "@/lib/country-cookie";
 import { getTeamByCode } from "@/lib/wc2026-teams";
 import { occupancyVerdict } from "@/lib/crowd/occupancy-copy";
@@ -142,15 +144,13 @@ export default async function HomePage() {
   );
   const next = teamUpcoming[0];
 
-  // "Upcoming Matches" section now shows ALL upcoming WC matches by default;
-  // the picked team is still highlighted via the hero above.
-  const allUpcoming = allFixtures
-    .filter((f) => new Date(f.kickoff_utc).getTime() >= Date.now())
-    .sort(
-      (a, b) =>
-        new Date(a.kickoff_utc).getTime() - new Date(b.kickoff_utc).getTime(),
-    )
-    .map(fixtureToMatchData);
+  // Full WC2026 tournament — 104 matches from the static schedule,
+  // overlaid with Supabase kickoff times where available. Filtered to
+  // upcoming so the grid stays forward-looking.
+  const allUpcoming = mergeFixturesIntoSchedule(
+    getScheduleAsMatchCards(),
+    allFixtures,
+  ).filter((m) => new Date(m.kickoffUtc).getTime() >= Date.now());
 
   const group = findTeamGroup(allFixtures, pickedCode);
   const groupRows: StandingsRow[] = group
@@ -176,6 +176,40 @@ export default async function HomePage() {
     : [];
 
   const minsToNext = next ? minutesToKickoff(next) : null;
+
+  // Build the unified hub dataset — fan zones + all team-aligned bars, dedup by id.
+  // Filter out anything missing coordinates so the map ignores ungeocoded entries.
+  const hubMap = new Map<string, HubVenue>();
+  for (const fz of fanZones) {
+    if (!Number.isFinite(fz.lat) || !Number.isFinite(fz.lng)) continue;
+    hubMap.set(fz.id, {
+      id: fz.id,
+      name: fz.name,
+      neighborhood: fz.neighborhood ?? null,
+      address: fz.address ?? null,
+      lat: fz.lat,
+      lng: fz.lng,
+      isOfficial: true,
+      vibe: fz.atmosphere?.vibe ?? null,
+      photoUrl: fz.photo_url ?? null,
+    });
+  }
+  for (const b of bars) {
+    if (!Number.isFinite(b.venue.lat) || !Number.isFinite(b.venue.lng)) continue;
+    if (hubMap.has(b.venue.id)) continue;
+    hubMap.set(b.venue.id, {
+      id: b.venue.id,
+      name: b.venue.name,
+      neighborhood: b.venue.neighborhood ?? null,
+      address: b.venue.address ?? null,
+      lat: b.venue.lat,
+      lng: b.venue.lng,
+      isOfficial: b.role === "home_bar",
+      vibe: b.venue.atmosphere?.vibe ?? null,
+      photoUrl: b.venue.photo_url ?? null,
+    });
+  }
+  const hubVenues = Array.from(hubMap.values());
 
   return (
     <main className="mx-auto max-w-7xl space-y-section-gap px-container-padding py-section-gap">
@@ -222,6 +256,15 @@ export default async function HomePage() {
           </p>
         </div>
       )}
+
+      {/* Modern Sports Venue Hub — dark map + synced bar list */}
+      {hubVenues.length ? (
+        <VenueHub
+          venues={hubVenues}
+          title={`Where to watch ${displayName} in SF`}
+          eyebrow="Modern Sports Venue Hub"
+        />
+      ) : null}
 
       {/* Upcoming — full WC2026 schedule, filterable */}
       {allUpcoming.length ? (

@@ -24,7 +24,8 @@ import {
 } from "@/lib/queries";
 import type { Fixture } from "@/lib/types";
 import { teamHeroImages } from "@/lib/team-imagery";
-import { fixtureToMatchData } from "@/lib/wc2026-matches";
+import { mergeFixturesIntoSchedule } from "@/lib/wc2026-matches";
+import { getScheduleAsMatchCards } from "@/lib/wc2026-schedule";
 import { SF_OFFICIAL_FAN_ZONES, getTeamByCode } from "@/lib/wc2026-teams";
 
 export const revalidate = 60;
@@ -124,15 +125,13 @@ export default async function CountryDetailPage({
   const next = teamUpcoming[0];
   const minsToNext = next ? minutesToKickoff(next) : null;
 
-  // Pass the full upcoming schedule into MatchesGrid; the grid pre-filters to
-  // this country, but the dropdown lets the visitor zoom out to all matches.
-  const allUpcoming = allFixtures
-    .filter((f) => new Date(f.kickoff_utc).getTime() >= Date.now())
-    .sort(
-      (a, b) =>
-        new Date(a.kickoff_utc).getTime() - new Date(b.kickoff_utc).getTime(),
-    )
-    .map(fixtureToMatchData);
+  // Full WC2026 tournament — 104 matches from the static schedule,
+  // overlaid with Supabase kickoff times where available. Pre-filtered to
+  // this country via MatchesGrid's defaultTeamFilter prop.
+  const allUpcoming = mergeFixturesIntoSchedule(
+    getScheduleAsMatchCards(),
+    allFixtures,
+  ).filter((m) => new Date(m.kickoffUtc).getTime() >= Date.now());
 
   const group = findTeamGroup(allFixtures, upperCode);
   const groupRows: StandingsRow[] = group

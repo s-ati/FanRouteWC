@@ -14,7 +14,7 @@ export const WC_2026_TEAMS: WCTeam[] = [
   { code: "MEX", name: "Mexico" },
   { code: "CAN", name: "Canada" },
 
-  // UEFA (16)
+  // UEFA
   { code: "ENG", name: "England" },
   { code: "FRA", name: "France" },
   { code: "GER", name: "Germany" },
@@ -31,6 +31,9 @@ export const WC_2026_TEAMS: WCTeam[] = [
   { code: "DEN", name: "Denmark" },
   { code: "TUR", name: "Türkiye" },
   { code: "SCO", name: "Scotland" },
+  { code: "CZE", name: "Czechia" },
+  { code: "SWE", name: "Sweden" },
+  { code: "BIH", name: "Bosnia & Herzegovina" },
 
   // CONMEBOL (6)
   { code: "ARG", name: "Argentina" },
@@ -44,34 +47,39 @@ export const WC_2026_TEAMS: WCTeam[] = [
   { code: "JAM", name: "Jamaica" },
   { code: "CRC", name: "Costa Rica" },
   { code: "PAN", name: "Panama" },
+  { code: "HAI", name: "Haiti" },
+  { code: "CUW", name: "Curaçao" },
 
-  // CAF (9)
+  // CAF
   { code: "MAR", name: "Morocco" },
   { code: "TUN", name: "Tunisia" },
   { code: "EGY", name: "Egypt" },
   { code: "ALG", name: "Algeria" },
   { code: "GHA", name: "Ghana" },
   { code: "SEN", name: "Senegal" },
-  { code: "CIV", name: "Ivory Coast" },
+  { code: "CIV", name: "Côte d'Ivoire" },
   { code: "NGA", name: "Nigeria" },
   { code: "CMR", name: "Cameroon" },
+  { code: "RSA", name: "South Africa" },
+  { code: "COD", name: "Congo DR" },
 
-  // AFC (8)
+  // AFC
   { code: "JPN", name: "Japan" },
-  { code: "KOR", name: "South Korea" },
+  { code: "KOR", name: "Korea Republic" },
   { code: "AUS", name: "Australia" },
   { code: "IRN", name: "Iran" },
   { code: "KSA", name: "Saudi Arabia" },
   { code: "UZB", name: "Uzbekistan" },
   { code: "JOR", name: "Jordan" },
   { code: "IRQ", name: "Iraq" },
+  { code: "QAT", name: "Qatar" },
 
   // OFC (1)
   { code: "NZL", name: "New Zealand" },
 
   // Inter-confederation playoffs (2) — placeholders, edit when finalized.
   { code: "BOL", name: "Bolivia" },
-  { code: "CPV", name: "Cape Verde" },
+  { code: "CPV", name: "Cabo Verde" },
 ];
 
 export const SF_OFFICIAL_FAN_ZONES = [

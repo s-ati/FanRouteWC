@@ -106,36 +106,36 @@ export default function AtmosphereGrid(props: Props) {
     "data" in props ? props.data : legacyToData(props.cells);
 
   return (
-    <div className="relative isolate overflow-hidden rounded-xl bg-[#0E0B1F] p-stack-lg">
-      {/* Glow background so the glass cards actually look refractive */}
+    <div className="relative isolate overflow-hidden rounded-xl bg-[#00175F] p-stack-lg">
+      {/* Cyan glow blobs so the navy bg has depth and the glass cards feel
+          refractive against the FIFA palette. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -top-24 -left-16 h-72 w-72 rounded-full opacity-70 blur-3xl"
+        className="pointer-events-none absolute -top-24 -left-16 h-72 w-72 rounded-full opacity-60 blur-3xl"
         style={{
           background:
-            "radial-gradient(circle, rgba(124, 58, 237, 0.85), rgba(124, 58, 237, 0) 70%)",
+            "radial-gradient(circle, rgba(0, 163, 224, 0.55), rgba(0, 163, 224, 0) 70%)",
         }}
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -right-20 top-10 h-80 w-80 rounded-full opacity-60 blur-3xl"
+        className="pointer-events-none absolute -right-20 top-10 h-80 w-80 rounded-full opacity-50 blur-3xl"
         style={{
           background:
-            "radial-gradient(circle, rgba(56, 189, 248, 0.65), rgba(56, 189, 248, 0) 70%)",
+            "radial-gradient(circle, rgba(125, 211, 252, 0.5), rgba(125, 211, 252, 0) 70%)",
         }}
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -bottom-24 left-1/3 h-72 w-72 rounded-full opacity-50 blur-3xl"
+        className="pointer-events-none absolute -bottom-24 left-1/3 h-72 w-72 rounded-full opacity-40 blur-3xl"
         style={{
           background:
-            "radial-gradient(circle, rgba(236, 72, 153, 0.55), rgba(236, 72, 153, 0) 70%)",
+            "radial-gradient(circle, rgba(0, 196, 255, 0.45), rgba(0, 196, 255, 0) 70%)",
         }}
       />
 
-      {/* Single SVG <defs> for the purple→blue gradient referenced by every
-          icon's stroke. Keeping this once at the top is cheaper than
-          inlining a gradient per icon. */}
+      {/* Single SVG <defs> for the cyan gradient stroke shared by every
+          Lucide icon. */}
       <svg
         width="0"
         height="0"
@@ -145,12 +145,12 @@ export default function AtmosphereGrid(props: Props) {
       >
         <defs>
           <linearGradient id={GRADIENT_ID} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#a855f7" />
-            <stop offset="100%" stopColor="#3b82f6" />
+            <stop offset="0%" stopColor="#7DD3FC" />
+            <stop offset="100%" stopColor="#00A3E0" />
           </linearGradient>
           <linearGradient id={`${GRADIENT_ID}-fill`} x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#a855f7" />
-            <stop offset="100%" stopColor="#3b82f6" />
+            <stop offset="0%" stopColor="#7DD3FC" />
+            <stop offset="100%" stopColor="#00A3E0" />
           </linearGradient>
         </defs>
       </svg>
@@ -223,7 +223,10 @@ function GlassCard({
 }) {
   return (
     <div
-      className={`relative flex flex-col items-center gap-stack-sm rounded-lg border border-white/10 bg-white/5 p-stack-md text-center backdrop-blur-md md:items-stretch md:text-left ${className}`}
+      className={`relative flex flex-col items-center gap-stack-sm rounded-lg border border-[rgba(0,163,224,0.2)] bg-[rgba(5,30,117,0.55)] p-stack-md text-center backdrop-blur-md md:items-stretch md:text-left ${className}`}
+      style={{
+        boxShadow: "0 0 24px -6px rgba(0, 163, 224, 0.25)",
+      }}
     >
       <Icon
         size={16}
@@ -242,21 +245,22 @@ function GlassCard({
 
 // ── Sound: 5 vertical bars ────────────────────────────────────────────────
 function SoundBars({ level }: { level: number }) {
-  // 5 bars; ascending heights; first `level` filled with gradient, rest dim
   const bars = [0, 1, 2, 3, 4];
   return (
     <div className="flex h-8 items-end gap-1">
       {bars.map((i) => {
-        const h = 30 + i * 14; // 30, 44, 58, 72, 86 (% of 32px row)
+        const h = 30 + i * 14;
         const filled = i < level;
         return (
           <span
             key={i}
-            className={`w-2 rounded-sm transition-all ${filled ? "" : "bg-white/15"}`}
+            className={`w-2 rounded-sm transition-all ${
+              filled ? "bg-[#00A3E0]" : "bg-[rgba(0,23,95,0.7)]"
+            }`}
             style={{
               height: `${h}%`,
-              backgroundImage: filled
-                ? "linear-gradient(180deg, #a855f7, #3b82f6)"
+              boxShadow: filled
+                ? "0 0 8px rgba(0, 163, 224, 0.6)"
                 : undefined,
             }}
             aria-hidden
@@ -269,26 +273,30 @@ function SoundBars({ level }: { level: number }) {
 
 // ── Vibe: half-circle gauge with a needle ─────────────────────────────────
 function VibeMeter({ intensity }: { intensity: number }) {
-  // Map 0..1 to -90deg..+90deg for the needle.
   const angle = -90 + Math.max(0, Math.min(1, intensity)) * 180;
   return (
-    <svg viewBox="0 0 100 56" className="h-12 w-full" aria-hidden>
-      {/* Track */}
+    <svg
+      viewBox="0 0 100 56"
+      className="h-12 w-full"
+      aria-hidden
+      style={{ filter: "drop-shadow(0 0 6px rgba(0, 163, 224, 0.45))" }}
+    >
+      {/* Track — deep navy */}
       <path
         d="M10 50 A40 40 0 0 1 90 50"
         fill="none"
-        stroke="rgba(255,255,255,0.15)"
+        stroke="rgba(0, 23, 95, 0.85)"
         strokeWidth="6"
         strokeLinecap="round"
       />
-      {/* Filled portion proportional to intensity */}
+      {/* Filled portion — cyan gradient */}
       <path
         d="M10 50 A40 40 0 0 1 90 50"
         fill="none"
         stroke={`url(#${GRADIENT_ID}-fill)`}
         strokeWidth="6"
         strokeLinecap="round"
-        strokeDasharray={`${Math.PI * 40 * (intensity)}, 999`}
+        strokeDasharray={`${Math.PI * 40 * intensity}, 999`}
       />
       {/* Needle */}
       <g transform={`rotate(${angle} 50 50)`}>
@@ -297,11 +305,11 @@ function VibeMeter({ intensity }: { intensity: number }) {
           y1="50"
           x2="50"
           y2="14"
-          stroke="white"
+          stroke="#F1F5F9"
           strokeWidth="2"
           strokeLinecap="round"
         />
-        <circle cx="50" cy="50" r="3" fill="white" />
+        <circle cx="50" cy="50" r="3" fill="#F1F5F9" />
       </g>
     </svg>
   );
@@ -319,7 +327,6 @@ function CapacityBar({
 }) {
   void _max;
   const pct = currentPct == null ? 0 : Math.max(0, Math.min(100, currentPct));
-  // Same band thresholds as components/OccupancyBar.tsx
   const fill =
     pct >= 70
       ? "bg-rose-500"
@@ -338,7 +345,10 @@ function CapacityBar({
           load
         </span>
       </div>
-      <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-white/10">
+      <div
+        className="mt-1 h-2 w-full overflow-hidden rounded-full bg-[rgba(0,23,95,0.85)]"
+        style={{ boxShadow: "0 0 12px rgba(0, 163, 224, 0.35)" }}
+      >
         <div
           className={`h-full rounded-full transition-all ${fill}`}
           style={{ width: `${pct}%` }}
