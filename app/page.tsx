@@ -252,7 +252,7 @@ export default async function HomePage() {
         </p>
         <ul
           role="list"
-          className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-4"
+          className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4"
         >
           <li>
             <HeroTile

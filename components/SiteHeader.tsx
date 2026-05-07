@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { COUNTRY_COOKIE } from "@/lib/country-cookie";
 import { flagEmoji } from "@/lib/flags";
+import { getCurrentUser } from "@/lib/supabase/auth-server";
 import HeaderNav, { type HeaderNavItem } from "./HeaderNav";
 
 // Information is a direct link. Every other item reveals a small popover
@@ -16,9 +17,14 @@ const NAV: HeaderNavItem[] = [
 ];
 
 export default async function SiteHeader() {
-  const store = await cookies();
+  const [store, user] = await Promise.all([
+    cookies(),
+    getCurrentUser().catch(() => null),
+  ]);
   const picked = store.get(COUNTRY_COOKIE)?.value?.toUpperCase() ?? null;
   const pickedFlag = picked ? flagEmoji(picked) : null;
+  const userInitial =
+    user?.email?.[0]?.toUpperCase() ?? null;
 
   return (
     <header
@@ -49,7 +55,7 @@ export default async function SiteHeader() {
             handled inside HeaderNav (client). */}
         <HeaderNav items={NAV} />
 
-        {/* Right — team chip (or pick CTA) */}
+        {/* Right — team chip + user avatar / sign-in CTA */}
         <div className="flex items-center gap-stack-sm">
           {picked ? (
             <Link
@@ -65,9 +71,26 @@ export default async function SiteHeader() {
           ) : (
             <Link
               href="/onboarding"
-              className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-body-sm font-semibold text-on-primary transition hover:bg-primary-container"
+              className="hidden items-center rounded-md bg-primary px-4 py-2 text-body-sm font-semibold text-on-primary transition hover:bg-primary-container md:inline-flex"
             >
               Pick your team
+            </Link>
+          )}
+
+          {user ? (
+            <Link
+              href="/me"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-outline-variant bg-surface-container-low text-body-sm font-bold text-on-surface transition hover:border-primary hover:text-primary"
+              title={user.email ?? "Your window"}
+            >
+              {userInitial}
+            </Link>
+          ) : (
+            <Link
+              href="/login"
+              className="inline-flex items-center rounded-md border border-outline-variant px-3 py-1.5 text-body-sm font-medium text-on-surface transition hover:border-primary hover:text-primary"
+            >
+              Sign in
             </Link>
           )}
         </div>
