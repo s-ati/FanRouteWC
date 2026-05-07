@@ -262,6 +262,48 @@ export default async function HomePage() {
         </div>
       )}
 
+      {/* Hero entry tiles — Venues / Schedule / Tournament knowledge */}
+      <section aria-label="Explore the tournament">
+        <ul
+          role="list"
+          className="grid grid-cols-1 gap-gutter md:grid-cols-3"
+        >
+          <li>
+            <HeroTile
+              href="/venues"
+              eyebrow="Where to go"
+              title="Venues"
+              description="The 6 official Bay Area FIFA fan zones — free, open to the public, with photos and details for each spot."
+              cta="View all venues"
+              icon="stadium"
+              accent="amber"
+            />
+          </li>
+          <li>
+            <HeroTile
+              href="/schedule"
+              eyebrow="When to tune in"
+              title="Schedule"
+              description="Pick a match day and see every World Cup fixture for that date — group stage through the final."
+              cta="View match days"
+              icon="calendar_month"
+              accent="primary"
+            />
+          </li>
+          <li>
+            <HeroTile
+              href="/knowledge"
+              eyebrow="Get oriented"
+              title="General knowledge"
+              description="Tournament format, all 12 group standings, the knockout bracket, and the 16 host stadiums."
+              cta="View tournament"
+              icon="info"
+              accent="emerald"
+            />
+          </li>
+        </ul>
+      </section>
+
       {/* Modern Sports Venue Hub — dark map + synced bar list */}
       {hubVenues.length ? (
         <VenueHub
