@@ -6,6 +6,7 @@ import OccupancyBadge, { colorFromConfidence } from "@/components/OccupancyBadge
 import SectionHeader from "@/components/SectionHeader";
 import VenueMapLazy from "@/components/VenueMapLazy";
 import { calculateCrowdConfidence as _ccc, enrichRankedWithRealCrowd } from "@/lib/crowd/calculate";
+import { readPickedCountry } from "@/lib/country-cookie";
 import { flagEmoji } from "@/lib/flags";
 import {
   formatKickoffLocal,
@@ -14,7 +15,13 @@ import {
   rankVenuesForFixture,
   type RankedVenue,
 } from "@/lib/matchday";
-import { getAllVenues, getFixtureById } from "@/lib/queries";
+import {
+  getAllVenues,
+  getCountryByCode,
+  getFixtureById,
+  getRankedBarsForCountry,
+} from "@/lib/queries";
+import { getTeamByCode } from "@/lib/wc2026-teams";
 
 void _ccc;
 
@@ -22,37 +29,20 @@ export const revalidate = 60;
 
 type Params = { params: Promise<{ id: string }> };
 
-const TYPE_BUCKETS: Array<{
-  id: "official" | "public" | "bars";
+type BucketId = "official" | "public" | "fan-bars" | "bars";
+type Bucket = {
+  id: BucketId;
   label: string;
   description: string;
-  matchTypes: string[];
-}> = [
-  {
-    id: "official",
-    label: "Official",
-    description: "FIFA-sanctioned fan zones and watch parties.",
-    matchTypes: ["official_fan_zone", "official_watch_party"],
-  },
-  {
-    id: "public",
-    label: "Public",
-    description: "City-backed and credible community spots.",
-    matchTypes: ["credible_public"],
-  },
-  {
-    id: "bars",
-    label: "Bars",
-    description: "Supporter and sports bars across the city.",
-    matchTypes: ["fallback_bar"],
-  },
-];
+  items: RankedVenue[];
+};
 
 export default async function MatchPage({ params }: Params) {
   const { id } = await params;
-  const [fixture, venues] = await Promise.all([
+  const [fixture, venues, pickedCode] = await Promise.all([
     getFixtureById(id),
     getAllVenues(),
+    readPickedCountry(),
   ]);
 
   if (!fixture) notFound();
@@ -60,10 +50,68 @@ export default async function MatchPage({ params }: Params) {
   const baseRanked = rankVenuesForFixture(venues, fixture);
   const ranked = await enrichRankedWithRealCrowd(baseRanked, fixture);
 
-  const grouped = TYPE_BUCKETS.map((bucket) => ({
-    ...bucket,
-    items: ranked.filter((r) => bucket.matchTypes.includes(r.venue.type)),
-  }));
+  // If the user has picked a team, separate "fan bars" (bars curated for
+  // that team via bar_country_affinity) from the general "Bars" pool.
+  const fanBarIds = new Set<string>();
+  let pickedDisplayName: string | null = null;
+  if (pickedCode) {
+    const [pickedCountryRow, affinityBars] = await Promise.all([
+      getCountryByCode(pickedCode).catch(() => null),
+      getRankedBarsForCountry(pickedCode).catch(() => []),
+    ]);
+    pickedDisplayName =
+      pickedCountryRow?.name ?? getTeamByCode(pickedCode)?.name ?? pickedCode;
+    for (const a of affinityBars) fanBarIds.add(a.venue.id);
+  }
+
+  const officialItems = ranked.filter(
+    (r) =>
+      r.venue.type === "official_fan_zone" ||
+      r.venue.type === "official_watch_party",
+  );
+  const publicItems = ranked.filter((r) => r.venue.type === "credible_public");
+  const allBarItems = ranked.filter((r) => r.venue.type === "fallback_bar");
+  const fanBarItems = pickedCode
+    ? allBarItems.filter((r) => fanBarIds.has(r.venue.id))
+    : [];
+  const otherBarItems = pickedCode
+    ? allBarItems.filter((r) => !fanBarIds.has(r.venue.id))
+    : allBarItems;
+
+  const grouped: Bucket[] = [
+    {
+      id: "official",
+      label: "Official",
+      description: "FIFA-sanctioned fan zones and watch parties.",
+      items: officialItems,
+    },
+    {
+      id: "public",
+      label: "Public",
+      description: "City-backed and credible community spots.",
+      items: publicItems,
+    },
+    ...(pickedCode && fanBarItems.length
+      ? [
+          {
+            id: "fan-bars" as const,
+            label: pickedDisplayName
+              ? `${pickedDisplayName} fan bars`
+              : "Fan bars",
+            description: "Curated supporter bars for the team you follow.",
+            items: fanBarItems,
+          },
+        ]
+      : []),
+    {
+      id: "bars",
+      label: "Bars",
+      description: pickedCode
+        ? "Other supporter and sports bars across the city."
+        : "Supporter and sports bars across the city.",
+      items: otherBarItems,
+    },
+  ];
 
   const mapMarkers = ranked.map((r) => ({
     id: r.venue.id,
