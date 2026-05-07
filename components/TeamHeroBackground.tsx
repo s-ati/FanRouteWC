@@ -36,24 +36,14 @@ export default function TeamHeroBackground({
           style={{ opacity: i === active ? 1 : 0 }}
           aria-hidden={i !== active}
         >
-          {/* Blurred backdrop fills the entire box so the focal image
-              can `object-contain` without leaving harsh black bars. */}
           <Image
             src={src}
             alt=""
             fill
-            sizes="100vw"
+            sizes="(max-width: 1024px) 100vw, 1280px"
             priority={i === 0}
-            className="scale-110 object-cover blur-2xl"
-          />
-          {/* Focal image — contained so the full photo always fits. */}
-          <Image
-            src={src}
-            alt=""
-            fill
-            sizes="100vw"
-            priority={i === 0}
-            className="object-contain"
+            quality={95}
+            className="object-cover"
           />
         </div>
       ))}
