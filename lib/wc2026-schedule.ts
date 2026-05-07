@@ -292,6 +292,26 @@ export function getScheduleAsMatchCards(): MatchCardData[] {
 }
 
 // Look up which group letter a team plays in, plus all four group members,
+// Every group (A..L) with its 4 teams, derived from the canonical static
+// schedule. Used by /standings to render the whole tournament.
+export function getAllGroups(): Array<{ letter: string; teams: string[] }> {
+  const byGroup = new Map<string, Set<string>>();
+  for (const e of WC2026_SCHEDULE) {
+    if (!e.stage.startsWith("group-")) continue;
+    const letter = e.stage.slice("group-".length).toUpperCase();
+    const set = byGroup.get(letter) ?? new Set<string>();
+    set.add(e.homeCode);
+    set.add(e.awayCode);
+    byGroup.set(letter, set);
+  }
+  return Array.from(byGroup.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([letter, teams]) => ({
+      letter,
+      teams: Array.from(teams).sort(),
+    }));
+}
+
 // from the canonical static schedule (independent of which fixtures are seeded
 // into Supabase). Returns null if the code never appears in any group stage.
 export function findGroupForTeam(

@@ -4,10 +4,10 @@ import { COUNTRY_COOKIE } from "@/lib/country-cookie";
 import { flagEmoji } from "@/lib/flags";
 import HeaderNav, { type HeaderNavItem } from "./HeaderNav";
 
-// Standings + Information are direct links. The middle four reveal a
-// small popover with the actual destination CTA before navigating.
+// Information is a direct link. Every other item reveals a small popover
+// with the actual destination CTA before navigating.
 const NAV: HeaderNavItem[] = [
-  { label: "Standings", href: "/#standings" },
+  { label: "Standings", href: "/standings", popover: "View all standings" },
   { label: "Bracket", href: "/bracket", popover: "View full bracket" },
   { label: "Venues", href: "/venues", popover: "View all venues" },
   { label: "Bars", href: "/bars", popover: "View all bars" },
