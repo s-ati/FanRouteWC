@@ -258,8 +258,8 @@ export default async function HomePage() {
             <HeroTile
               href="/venues"
               eyebrow="Where to go"
-              title="Venues"
-              cta="All venues"
+              title="All venues"
+              cta="Open"
               icon="stadium"
               accent="amber"
             />
@@ -267,9 +267,9 @@ export default async function HomePage() {
           <li>
             <HeroTile
               href="/bars"
-              eyebrow="Supporter spots"
+              eyebrow="Support bars"
               title="Bars"
-              cta="All bars"
+              cta="Open"
               icon="sports_bar"
               accent="primary"
             />
@@ -279,7 +279,7 @@ export default async function HomePage() {
               href="/schedule"
               eyebrow="When to tune in"
               title="Schedule"
-              cta="Match days"
+              cta="Open"
               icon="calendar_month"
               accent="primary"
             />
@@ -288,8 +288,8 @@ export default async function HomePage() {
             <HeroTile
               href="/knowledge"
               eyebrow="Get oriented"
-              title="General knowledge"
-              cta="Tournament"
+              title="Tournament"
+              cta="Open"
               icon="info"
               accent="emerald"
             />

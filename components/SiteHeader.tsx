@@ -2,13 +2,17 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { COUNTRY_COOKIE } from "@/lib/country-cookie";
 import { flagEmoji } from "@/lib/flags";
+import HeaderNav, { type HeaderNavItem } from "./HeaderNav";
 
-const NAV = [
+// Standings + Information are direct links. The middle four reveal a
+// small popover with the actual destination CTA before navigating.
+const NAV: HeaderNavItem[] = [
   { label: "Standings", href: "/#standings" },
-  { label: "Bracket", href: "/#bracket" },
-  { label: "Venues", href: "/#venues" },
-  { label: "Bars", href: "/#bars" },
-  { label: "Schedule", href: "/#schedule" },
+  { label: "Bracket", href: "/bracket", popover: "View full bracket" },
+  { label: "Venues", href: "/venues", popover: "View all venues" },
+  { label: "Bars", href: "/bars", popover: "View all bars" },
+  { label: "Schedule", href: "/schedule", popover: "View full schedule" },
+  { label: "Information", href: "/knowledge" },
 ];
 
 export default async function SiteHeader() {
@@ -41,18 +45,9 @@ export default async function SiteHeader() {
           </span>
         </Link>
 
-        {/* Center nav — desktop only */}
-        <nav className="hidden items-center gap-stack-lg md:flex">
-          {NAV.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="text-body-sm font-medium text-on-surface-variant transition-colors hover:text-primary"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        {/* Center nav — desktop only. Direct links + popover items
+            handled inside HeaderNav (client). */}
+        <HeaderNav items={NAV} />
 
         {/* Right — team chip (or pick CTA) */}
         <div className="flex items-center gap-stack-sm">
