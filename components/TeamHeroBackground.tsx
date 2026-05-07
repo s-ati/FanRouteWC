@@ -28,7 +28,7 @@ export default function TeamHeroBackground({
   if (images.length === 0) return null;
 
   return (
-    <div className="absolute inset-0 overflow-hidden">
+    <div className="absolute inset-0 overflow-hidden bg-black">
       {images.map((src, i) => (
         <div
           key={src}
@@ -36,13 +36,24 @@ export default function TeamHeroBackground({
           style={{ opacity: i === active ? 1 : 0 }}
           aria-hidden={i !== active}
         >
+          {/* Blurred backdrop fills the entire box so the focal image
+              can `object-contain` without leaving harsh black bars. */}
           <Image
             src={src}
             alt=""
             fill
             sizes="100vw"
             priority={i === 0}
-            className="object-cover"
+            className="scale-110 object-cover blur-2xl"
+          />
+          {/* Focal image — contained so the full photo always fits. */}
+          <Image
+            src={src}
+            alt=""
+            fill
+            sizes="100vw"
+            priority={i === 0}
+            className="object-contain"
           />
         </div>
       ))}
