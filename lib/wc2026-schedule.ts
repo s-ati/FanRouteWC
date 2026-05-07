@@ -290,3 +290,26 @@ export function getScheduleAsMatchCards(): MatchCardData[] {
       new Date(a.kickoffUtc).getTime() - new Date(b.kickoffUtc).getTime(),
   );
 }
+
+// Look up which group letter a team plays in, plus all four group members,
+// from the canonical static schedule (independent of which fixtures are seeded
+// into Supabase). Returns null if the code never appears in any group stage.
+export function findGroupForTeam(
+  code: string,
+): { letter: string; teams: string[] } | null {
+  const upper = code.toUpperCase();
+  for (const e of WC2026_SCHEDULE) {
+    if (!e.stage.startsWith("group-")) continue;
+    if (e.homeCode !== upper && e.awayCode !== upper) continue;
+    const stage = e.stage;
+    const teams = new Set<string>();
+    for (const x of WC2026_SCHEDULE) {
+      if (x.stage === stage) {
+        teams.add(x.homeCode);
+        teams.add(x.awayCode);
+      }
+    }
+    return { letter: stage.slice("group-".length).toUpperCase(), teams: Array.from(teams).sort() };
+  }
+  return null;
+}

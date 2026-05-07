@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import HeroTile from "@/components/HeroTile";
 import KnockoutBracket from "@/components/KnockoutBracket";
 import MatchHero from "@/components/MatchHero";
+import TeamIdentityHero from "@/components/TeamIdentityHero";
 import MatchesGrid from "@/components/MatchesGrid";
 import StandingsTable, { type StandingsRow } from "@/components/StandingsTable";
 import BarCard, { type BarCardData } from "@/components/BarCard";
@@ -23,9 +24,8 @@ import {
   kickoffCountdown,
   stageLabel,
 } from "@/lib/matchday";
-import { groupFromStage } from "@/lib/groups";
 import { mergeFixturesIntoSchedule } from "@/lib/wc2026-matches";
-import { getScheduleAsMatchCards } from "@/lib/wc2026-schedule";
+import { findGroupForTeam, getScheduleAsMatchCards } from "@/lib/wc2026-schedule";
 import { COUNTRY_COOKIE, readPickedCountry } from "@/lib/country-cookie";
 import { getTeamByCode } from "@/lib/wc2026-teams";
 import { occupancyVerdict } from "@/lib/crowd/occupancy-copy";
@@ -64,28 +64,6 @@ function fixturesForTeam(all: Fixture[], code: string): Fixture[] {
     );
 }
 
-function findTeamGroup(all: Fixture[], code: string): {
-  letter: string;
-  teams: string[];
-} | null {
-  const upper = code.toUpperCase();
-  for (const f of all) {
-    const g = groupFromStage(f.stage);
-    if (!g) continue;
-    if (f.home_team !== upper && f.away_team !== upper) continue;
-    // Found this team's group — collect all teams playing in that group letter.
-    const stagePrefix = `group-${g.toLowerCase()}`;
-    const teams = new Set<string>();
-    for (const x of all) {
-      if (x.stage === stagePrefix) {
-        teams.add(x.home_team);
-        teams.add(x.away_team);
-      }
-    }
-    return { letter: g, teams: Array.from(teams).sort() };
-  }
-  return null;
-}
 
 function minutesToKickoff(f: Fixture, now = new Date()): number {
   return Math.max(
@@ -153,7 +131,7 @@ export default async function HomePage() {
     allFixtures,
   ).filter((m) => new Date(m.kickoffUtc).getTime() >= Date.now());
 
-  const group = findTeamGroup(allFixtures, pickedCode);
+  const group = findGroupForTeam(pickedCode);
   const groupRows: StandingsRow[] = group
     ? group.teams.map((code) => ({
         countryCode: code,
@@ -251,30 +229,37 @@ export default async function HomePage() {
           }}
         />
       ) : (
-        <div className="rounded-lg border border-outline-variant bg-surface-container-lowest p-stack-lg">
-          <p className="text-label-caps font-bold uppercase tracking-[0.05em] text-on-surface-variant">
-            No upcoming {displayName} match
-          </p>
-          <p className="mt-stack-sm text-body-main text-on-surface-variant">
-            We&apos;ll put their next fixture here as soon as the schedule
-            confirms.
-          </p>
-        </div>
+        <TeamIdentityHero
+          data={{
+            code: pickedCode,
+            displayName,
+            eyebrow: `FOLLOWING · ${displayName.toUpperCase()}`,
+            tagline:
+              "No San Francisco fixture for this team yet — we'll surface every match the moment the Bay Area schedule confirms it.",
+            backgroundImages: teamHeroImages(pickedCode),
+            ctaLabel: "Browse the schedule",
+            ctaHref: "/#schedule",
+          }}
+        />
       )}
 
-      {/* Hero entry tiles — Venues / Schedule / Tournament knowledge */}
-      <section aria-label="Explore the tournament">
+      {/* Subhero strip — compact quick-jumps beneath the MatchHero. The
+          main heros stay in the SiteHeader nav (Standings / Bracket /
+          Venues / Bars / Schedule). */}
+      <section aria-label="Quick jump">
+        <p className="mb-stack-sm font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+          Quick jump
+        </p>
         <ul
           role="list"
-          className="grid grid-cols-1 gap-gutter md:grid-cols-3"
+          className="grid grid-cols-1 gap-2 md:grid-cols-3"
         >
           <li>
             <HeroTile
               href="/venues"
               eyebrow="Where to go"
               title="Venues"
-              description="The 6 official Bay Area FIFA fan zones — free, open to the public, with photos and details for each spot."
-              cta="View all venues"
+              cta="All venues"
               icon="stadium"
               accent="amber"
             />
@@ -284,8 +269,7 @@ export default async function HomePage() {
               href="/schedule"
               eyebrow="When to tune in"
               title="Schedule"
-              description="Pick a match day and see every World Cup fixture for that date — group stage through the final."
-              cta="View match days"
+              cta="Match days"
               icon="calendar_month"
               accent="primary"
             />
@@ -295,8 +279,7 @@ export default async function HomePage() {
               href="/knowledge"
               eyebrow="Get oriented"
               title="General knowledge"
-              description="Tournament format, all 12 group standings, the knockout bracket, and the 16 host stadiums."
-              cta="View tournament"
+              cta="Tournament"
               icon="info"
               accent="emerald"
             />

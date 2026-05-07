@@ -1,14 +1,14 @@
 import Link from "next/link";
 
-// Click-into-detail hero tile. Big surface, small CTA, navigates to a
-// dedicated landing page. Used for Venues / Schedule / General Knowledge
-// entry points on the home page.
+// Compact subhero tile. Sits below the main MatchHero on the home page —
+// quick entry points to dedicated landing pages (Venues, Schedule,
+// General Knowledge). The site header keeps the primary "main heros"
+// (Standings, Bracket, Venues, Bars, Schedule) — these are smaller cards.
 
 export default function HeroTile({
   href,
   eyebrow,
   title,
-  description,
   cta,
   icon,
   accent = "primary",
@@ -16,10 +16,11 @@ export default function HeroTile({
   href: string;
   eyebrow: string;
   title: string;
-  description: string;
   cta: string;
   icon?: string;            // material-symbols-outlined name
   accent?: "primary" | "amber" | "emerald";
+  /** Optional, currently unused — kept for API compat with earlier callers */
+  description?: string;
 }) {
   const ring =
     accent === "amber"
@@ -37,48 +38,52 @@ export default function HeroTile({
   return (
     <Link
       href={href}
-      className={`group relative flex h-full flex-col justify-between gap-stack-lg overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest p-stack-lg transition hover:-translate-y-[2px] hover:shadow-ambient-strong ${ring}`}
+      className={`group relative flex items-center gap-stack-md overflow-hidden rounded-lg border border-outline-variant bg-surface-container-lowest px-stack-lg py-stack-md transition hover:-translate-y-[1px] hover:shadow-ambient ${ring}`}
     >
-      <span
-        aria-hidden
-        className="absolute right-stack-md top-stack-md inline-block h-2 w-2 rounded-full"
-        style={{
-          background: dotColor,
-          boxShadow: `0 0 12px ${dotColor}`,
-        }}
-      />
+      {icon ? (
+        <span
+          aria-hidden
+          className="flex h-9 w-9 flex-none items-center justify-center rounded-md"
+          style={{
+            background: `${dotColor}1A`,        // 10% tint
+            boxShadow: `inset 0 0 0 1px ${dotColor}33`,
+          }}
+        >
+          <span
+            className="material-symbols-outlined"
+            style={{ fontSize: 20, color: dotColor }}
+          >
+            {icon}
+          </span>
+        </span>
+      ) : null}
 
-      <div className="space-y-stack-md">
-        <p className="text-label-caps font-bold uppercase tracking-[0.08em] text-on-surface-variant">
+      <div className="min-w-0 flex-1">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
           {eyebrow}
         </p>
-        <div className="flex items-start gap-3">
-          {icon ? (
-            <span
-              className="material-symbols-outlined text-on-surface"
-              aria-hidden
-              style={{ fontSize: 28 }}
-            >
-              {icon}
-            </span>
-          ) : null}
-          <h3 className="text-headline-lg text-on-surface">{title}</h3>
-        </div>
-        <p className="text-body-main text-on-surface-variant">
-          {description}
+        <p className="truncate text-headline-md text-on-surface group-hover:text-primary">
+          {title}
         </p>
       </div>
 
-      <div className="flex items-center gap-2 text-label-caps font-bold uppercase tracking-[0.08em] text-primary">
+      <span className="hidden items-center gap-1 text-label-caps font-bold uppercase tracking-[0.08em] text-primary md:inline-flex">
         <span>{cta}</span>
         <span
           className="material-symbols-outlined transition-transform group-hover:translate-x-1"
           aria-hidden
-          style={{ fontSize: 18 }}
+          style={{ fontSize: 16 }}
         >
           arrow_forward
         </span>
-      </div>
+      </span>
+      <span
+        className="material-symbols-outlined text-on-surface-variant md:hidden"
+        aria-hidden
+        style={{ fontSize: 18 }}
+      >
+        chevron_right
+      </span>
     </Link>
   );
 }

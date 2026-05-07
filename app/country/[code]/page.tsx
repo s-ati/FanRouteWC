@@ -5,12 +5,12 @@ import BarCard, { type BarCardData } from "@/components/BarCard";
 import Chip from "@/components/Chip";
 import MatchHero from "@/components/MatchHero";
 import SectionHeader from "@/components/SectionHeader";
+import TeamIdentityHero from "@/components/TeamIdentityHero";
 import StandingsTable, { type StandingsRow } from "@/components/StandingsTable";
 import MatchesGrid from "@/components/MatchesGrid";
 import { COUNTRY_COOKIE, readPickedCountry } from "@/lib/country-cookie";
 import { occupancyVerdict } from "@/lib/crowd/occupancy-copy";
 import { flagEmoji } from "@/lib/flags";
-import { groupFromStage } from "@/lib/groups";
 import {
   formatKickoffLocal,
   kickoffCountdown,
@@ -25,7 +25,7 @@ import {
 import type { Fixture } from "@/lib/types";
 import { teamHeroImages } from "@/lib/team-imagery";
 import { mergeFixturesIntoSchedule } from "@/lib/wc2026-matches";
-import { getScheduleAsMatchCards } from "@/lib/wc2026-schedule";
+import { findGroupForTeam, getScheduleAsMatchCards } from "@/lib/wc2026-schedule";
 import { SF_OFFICIAL_FAN_ZONES, getTeamByCode } from "@/lib/wc2026-teams";
 
 export const revalidate = 60;
@@ -62,27 +62,6 @@ function fixturesForTeam(all: Fixture[], code: string): Fixture[] {
     );
 }
 
-function findTeamGroup(all: Fixture[], code: string): {
-  letter: string;
-  teams: string[];
-} | null {
-  const upper = code.toUpperCase();
-  for (const f of all) {
-    const g = groupFromStage(f.stage);
-    if (!g) continue;
-    if (f.home_team !== upper && f.away_team !== upper) continue;
-    const stagePrefix = `group-${g.toLowerCase()}`;
-    const teams = new Set<string>();
-    for (const x of all) {
-      if (x.stage === stagePrefix) {
-        teams.add(x.home_team);
-        teams.add(x.away_team);
-      }
-    }
-    return { letter: g, teams: Array.from(teams).sort() };
-  }
-  return null;
-}
 
 function minutesToKickoff(f: Fixture, now = new Date()): number {
   return Math.max(
@@ -133,7 +112,7 @@ export default async function CountryDetailPage({
     allFixtures,
   ).filter((m) => new Date(m.kickoffUtc).getTime() >= Date.now());
 
-  const group = findTeamGroup(allFixtures, upperCode);
+  const group = findGroupForTeam(upperCode);
   const groupRows: StandingsRow[] = group
     ? group.teams.map((c) => ({
         countryCode: c,
@@ -195,7 +174,7 @@ export default async function CountryDetailPage({
         </div>
       </section>
 
-      {/* Hero — next match */}
+      {/* Hero — next match (or identity fallback when no SF fixture) */}
       {next ? (
         <MatchHero
           data={{
@@ -212,7 +191,20 @@ export default async function CountryDetailPage({
             eyebrow: `${displayName.toUpperCase()}'S NEXT MATCH`,
           }}
         />
-      ) : null}
+      ) : (
+        <TeamIdentityHero
+          data={{
+            code: upperCode,
+            displayName,
+            eyebrow: displayName.toUpperCase(),
+            tagline:
+              "No San Francisco fixture for this team yet — we'll surface every match the moment the Bay Area schedule confirms it.",
+            backgroundImages: teamHeroImages(upperCode),
+            ctaLabel: "Browse the schedule",
+            ctaHref: "/#schedule",
+          }}
+        />
+      )}
 
       {/* Upcoming — pre-filtered to this country, dropdown widens scope */}
       {allUpcoming.length ? (
