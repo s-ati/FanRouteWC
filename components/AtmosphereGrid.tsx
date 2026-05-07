@@ -32,21 +32,33 @@ export type VenuePulseData = {
 
 const GRADIENT_ID = "venuePulseGradient";
 
-// Map vibe → 0..1 energy. Family is calm; party is loud.
+// Map vibe → 0..1 energy. Drives the gauge needle position.
+//   family    → 0.20 (chill)
+//   mixed     → 0.50 (middle of the dial)
+//   hardcore  → 0.65
+//   party     → 0.80 (per spec — leaves headroom past the needle)
 function vibeIntensity(vibe: string | null): number {
   if (!vibe) return 0.4;
   switch (vibe.toLowerCase()) {
     case "party":
-      return 1;
+      return 0.8;
     case "hardcore":
-      return 0.85;
+      return 0.65;
     case "mixed":
-      return 0.55;
+      return 0.5;
     case "family":
-      return 0.3;
+      return 0.2;
     default:
       return 0.4;
   }
+}
+
+// Capacity-load trend copy. Replaces the "TBD" line under the bar.
+function capacityTrend(pct: number | null): string {
+  if (pct == null) return "Trend pending";
+  if (pct < 50) return "Easy entry now";
+  if (pct > 80) return "Standing room only";
+  return "Filling up steadily";
 }
 
 function soundLevel(s: VenuePulseData["soundLikelihood"]): number {
@@ -143,7 +155,7 @@ export default function AtmosphereGrid(props: Props) {
         </defs>
       </svg>
 
-      <div className="relative grid grid-cols-2 gap-3 md:grid-cols-5">
+      <div className="relative grid grid-cols-2 gap-4 md:grid-cols-5">
         <GlassCard label="Setting" Icon={HomeIcon}>
           <p className="font-mono text-headline-md text-white">
             {cap(data.setting)}
@@ -170,9 +182,7 @@ export default function AtmosphereGrid(props: Props) {
             max={data.capacityMax}
           />
           <p className="mt-2 font-mono text-body-sm text-white/80">
-            {data.capacityMax != null
-              ? `${data.capacityMax.toLocaleString()} max`
-              : "TBD"}
+            {capacityTrend(data.capacityCurrentPct)}
           </p>
         </GlassCard>
 
@@ -197,6 +207,9 @@ export default function AtmosphereGrid(props: Props) {
 }
 
 // ── Card shell ────────────────────────────────────────────────────────────
+// Icons sit absolute in the top-right at 16px / opacity-40 so they read as
+// glyphs, not focal elements. Card content is text-centered on mobile,
+// left-aligned on desktop where the 5-col rhythm wants tighter alignment.
 function GlassCard({
   label,
   Icon,
@@ -210,19 +223,18 @@ function GlassCard({
 }) {
   return (
     <div
-      className={`relative flex flex-col gap-stack-sm rounded-lg border border-white/10 bg-white/5 p-stack-md backdrop-blur-md ${className}`}
+      className={`relative flex flex-col items-center gap-stack-sm rounded-lg border border-white/10 bg-white/5 p-stack-md text-center backdrop-blur-md md:items-stretch md:text-left ${className}`}
     >
-      <div className="flex items-center justify-between">
-        <span className="text-label-caps font-bold uppercase tracking-[0.08em] text-white/70">
-          {label}
-        </span>
-        <Icon
-          size={20}
-          strokeWidth={2}
-          stroke={`url(#${GRADIENT_ID})`}
-          fill="none"
-        />
-      </div>
+      <Icon
+        size={16}
+        strokeWidth={2}
+        stroke={`url(#${GRADIENT_ID})`}
+        fill="none"
+        className="absolute right-3 top-3 opacity-40"
+      />
+      <span className="text-label-caps font-bold uppercase tracking-[0.08em] text-white/70">
+        {label}
+      </span>
       {children}
     </div>
   );
