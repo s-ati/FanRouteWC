@@ -1,37 +1,70 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import Chip from "@/components/Chip";
+import OccupancyBadge, { colorFromConfidence } from "@/components/OccupancyBadge";
+import SectionHeader from "@/components/SectionHeader";
 import VenueMapLazy from "@/components/VenueMapLazy";
-import CrowdBadge, { sourceLabel } from "@/components/CrowdBadge";
-import { getAllVenues, getFixtureById } from "@/lib/queries";
+import { calculateCrowdConfidence as _ccc, enrichRankedWithRealCrowd } from "@/lib/crowd/calculate";
+import { flagEmoji } from "@/lib/flags";
 import {
-  computeFallbacks,
   formatKickoffLocal,
   kickoffCountdown,
   matchCode,
   rankVenuesForFixture,
+  type RankedVenue,
 } from "@/lib/matchday";
-import { enrichRankedWithRealCrowd } from "@/lib/crowd/calculate";
-import { flagEmoji } from "@/lib/flags";
+import { getAllVenues, getFixtureById } from "@/lib/queries";
+
+void _ccc;
 
 export const revalidate = 60;
 
 type Params = { params: Promise<{ id: string }> };
 
+const TYPE_BUCKETS: Array<{
+  id: "official" | "public" | "bars";
+  label: string;
+  description: string;
+  matchTypes: string[];
+}> = [
+  {
+    id: "official",
+    label: "Official",
+    description: "FIFA-sanctioned fan zones and watch parties.",
+    matchTypes: ["official_fan_zone", "official_watch_party"],
+  },
+  {
+    id: "public",
+    label: "Public",
+    description: "City-backed and credible community spots.",
+    matchTypes: ["credible_public"],
+  },
+  {
+    id: "bars",
+    label: "Bars",
+    description: "Supporter and sports bars across the city.",
+    matchTypes: ["fallback_bar"],
+  },
+];
+
 export default async function MatchPage({ params }: Params) {
   const { id } = await params;
-  const [fixture, venues] = await Promise.all([getFixtureById(id), getAllVenues()]);
+  const [fixture, venues] = await Promise.all([
+    getFixtureById(id),
+    getAllVenues(),
+  ]);
 
   if (!fixture) notFound();
 
   const baseRanked = rankVenuesForFixture(venues, fixture);
   const ranked = await enrichRankedWithRealCrowd(baseRanked, fixture);
-  const primary = ranked[0] ?? null;
-  const fallbacks = primary
-    ? await enrichRankedWithRealCrowd(
-        computeFallbacks(primary.venue, venues, fixture),
-        fixture,
-      )
-    : [];
+
+  const grouped = TYPE_BUCKETS.map((bucket) => ({
+    ...bucket,
+    items: ranked.filter((r) => bucket.matchTypes.includes(r.venue.type)),
+  }));
+
   const mapMarkers = ranked.map((r) => ({
     id: r.venue.id,
     name: r.venue.name,
@@ -43,160 +76,188 @@ export default async function MatchPage({ params }: Params) {
   }));
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-16">
+    <main className="mx-auto max-w-7xl space-y-section-gap px-container-padding py-section-gap">
+      {/* Back link */}
       <Link
-        href="/#schedule"
-        className="font-mono text-[11px] uppercase tracking-widest text-ink-muted underline underline-offset-4 hover:text-ink"
+        href="/"
+        className="text-label-caps font-bold uppercase tracking-[0.05em] text-on-surface-variant hover:text-primary"
       >
-        ← Back to schedule
+        ← BACK TO HOME
       </Link>
 
-      <header className="mt-8 border-b border-rule pb-10">
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-ink-muted">
+      {/* Match header */}
+      <header>
+        <p className="text-label-caps font-bold uppercase tracking-[0.05em] text-on-surface-variant">
           {matchCode(fixture)}
         </p>
-        <h1
-          className="mt-4 flex flex-wrap items-center gap-4 font-display text-6xl font-medium leading-none tracking-tight md:text-7xl"
-          style={{ fontVariantNumeric: "tabular-nums" }}
-        >
-          {flagEmoji(fixture.home_team) ? (
-            <span aria-hidden>{flagEmoji(fixture.home_team)}</span>
-          ) : null}
+        <h1 className="mt-stack-md flex flex-wrap items-center gap-3 text-display-xl text-on-surface">
+          <span aria-hidden className="text-[0.7em]">
+            {flagEmoji(fixture.home_team) || "🏳️"}
+          </span>
           <span>{fixture.home_team}</span>
-          <span className="text-ink-muted">v</span>
-          {flagEmoji(fixture.away_team) ? (
-            <span aria-hidden>{flagEmoji(fixture.away_team)}</span>
-          ) : null}
+          <span className="font-light text-on-surface-variant">v</span>
+          <span aria-hidden className="text-[0.7em]">
+            {flagEmoji(fixture.away_team) || "🏳️"}
+          </span>
           <span>{fixture.away_team}</span>
         </h1>
-        <p className="mt-4 font-mono text-sm uppercase tracking-wide text-ink-body">
-          {formatKickoffLocal(fixture)} · kickoff {kickoffCountdown(fixture)}
-        </p>
-        {fixture.played_in_bay_area ? (
-          <p className="mt-3 font-mono text-xs uppercase tracking-widest text-official">
-            Played at Levi&apos;s Stadium — expect full fan-zone activation
-          </p>
-        ) : null}
+        <div className="mt-stack-md flex flex-wrap items-center gap-x-4 gap-y-2 text-body-main text-on-surface-variant">
+          <span className="inline-flex items-center gap-2">
+            <span className="material-symbols-outlined" aria-hidden>
+              schedule
+            </span>
+            {formatKickoffLocal(fixture)}
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <span className="material-symbols-outlined" aria-hidden>
+              timer
+            </span>
+            {kickoffCountdown(fixture)}
+          </span>
+          {fixture.played_in_bay_area ? (
+            <Chip tone="success" size="sm" icon="stadium">
+              Levi&apos;s Stadium
+            </Chip>
+          ) : null}
+        </div>
         {fixture.notes ? (
-          <p className="mt-6 max-w-2xl text-ink-body">{fixture.notes}</p>
+          <p className="mt-stack-md max-w-2xl text-body-main text-on-surface-variant">
+            {fixture.notes}
+          </p>
         ) : null}
       </header>
 
+      {/* Empty state */}
       {ranked.length === 0 ? (
-        <section className="mt-16 rounded-md border border-rule bg-paper-deep p-6">
-          <p className="font-mono text-xs uppercase tracking-widest text-ink-muted">
-            No officially announced venues for this match yet.
+        <section className="rounded-lg border border-outline-variant bg-surface-container-lowest p-stack-lg">
+          <p className="text-label-caps font-bold uppercase tracking-[0.05em] text-on-surface-variant">
+            No venues announced yet
           </p>
-          <p className="mt-2 text-ink-body">
-            Bay Area Host Committee venue schedules are subject to FIFA and
+          <p className="mt-stack-sm text-body-main text-on-surface-variant">
+            Bay Area Host Committee schedules are subject to FIFA and
             broadcast-partner approvals. Check back closer to kickoff.
           </p>
         </section>
-      ) : (
-        <>
-          <section className="mt-12 grid grid-cols-1 gap-10 md:grid-cols-[1fr_1.1fr]">
-            <div>
-              <p className="font-mono text-xs uppercase tracking-[0.2em] text-ink-muted">
-                Where to watch · ranked for this match
-              </p>
-              <h2 className="mt-3 font-display text-3xl font-medium">
-                {ranked.length} {ranked.length === 1 ? "option" : "options"} tonight.
-              </h2>
-              <p className="mt-3 max-w-md text-ink-body">
-                Ranked by official status first, then venue size and match fit.
-                Crowd states are expected pre-match — live updates land later.
-              </p>
-            </div>
-            <VenueMapLazy markers={mapMarkers} highlightId={primary?.venue.id} />
-          </section>
+      ) : null}
 
-          <ol className="mt-12 divide-y divide-rule border-y border-rule">
-            {ranked.map((r) => (
-              <li key={r.venue.id} className="py-8">
-                <div className="grid grid-cols-[auto_1fr_auto] items-start gap-6">
-                  <span
-                    className="font-display text-4xl leading-none text-ink-muted"
-                    aria-hidden
-                  >
-                    {String(r.rank).padStart(2, "0")}
-                  </span>
-                  <div>
-                    <p className="font-mono text-[11px] uppercase tracking-widest text-ink-muted">
-                      {r.venue.relevance_level} · {r.venue.type.replace(/_/g, " ")}
-                    </p>
-                    <Link
-                      href={`/venues/${r.venue.id}`}
-                      className="mt-1 block font-display text-3xl font-medium hover:underline"
-                    >
-                      {r.venue.name}
-                    </Link>
-                    <p className="mt-1 text-sm text-ink-body">{r.venue.address}</p>
-                    <p className="mt-3 max-w-xl text-sm text-ink-body">{r.reason}</p>
-                  </div>
-                  <div className="flex flex-col items-end gap-2 text-right">
-                    <CrowdBadge
-                      crowd={r.crowd}
-                      source={r.crowdSource}
-                      ageMin={r.crowdAgeMin}
-                      rawPct={r.crowdRawPct}
-                    />
-                    {sourceLabel(r.crowdSource, r.crowdAgeMin) ? (
-                      <span className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
-                        {sourceLabel(r.crowdSource, r.crowdAgeMin)}
-                      </span>
-                    ) : null}
-                    <span className="font-mono text-[11px] uppercase tracking-widest text-ink-muted">
-                      {r.venue.indoor_outdoor}
-                    </span>
-                    {r.venue.atmosphere?.vibe ? (
-                      <span className="font-mono text-[11px] uppercase tracking-widest text-ink-muted">
-                        {r.venue.atmosphere.vibe}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-              </li>
+      {/* Type chip nav */}
+      {ranked.length > 0 ? (
+        <section>
+          <p className="text-label-caps font-bold uppercase tracking-[0.05em] text-on-surface-variant">
+            Match viewing options
+          </p>
+          <div className="mt-stack-md flex flex-wrap gap-2">
+            {grouped.map((g) => (
+              <a
+                key={g.id}
+                href={`#${g.id}`}
+                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-body-sm font-semibold transition ${
+                  g.items.length > 0
+                    ? "border-outline-variant bg-surface-container-lowest text-on-surface hover:border-primary hover:text-primary"
+                    : "cursor-not-allowed border-outline-variant bg-surface-container text-on-surface-variant opacity-60"
+                }`}
+                aria-disabled={g.items.length === 0}
+              >
+                {g.label}
+                <span className="text-on-surface-variant">{g.items.length}</span>
+              </a>
             ))}
-          </ol>
+          </div>
+        </section>
+      ) : null}
 
-          {fallbacks.length > 0 ? (
-            <section className="mt-16">
-              <p className="font-mono text-xs uppercase tracking-[0.2em] text-ink-muted">
-                If {primary!.venue.name} fills up
-              </p>
-              <h2 className="mt-3 font-display text-3xl font-medium">Nearby fallback.</h2>
-              <ul role="list" className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {fallbacks.map((f) => (
-                  <li key={f.venue.id}>
-                    <Link
-                      href={`/venues/${f.venue.id}`}
-                      className="block rounded-md border border-rule bg-paper p-5 transition hover:border-ink"
-                    >
-                      <p className="font-mono text-[11px] uppercase tracking-widest text-ink-muted">
-                        {f.distanceMi != null
-                          ? `${f.distanceMi.toFixed(1)} mi · ${f.venue.relevance_level}`
-                          : f.venue.relevance_level}
-                      </p>
-                      <p className="mt-3 font-display text-xl font-medium">
-                        {f.venue.name}
-                      </p>
-                      <p className="mt-1 text-sm text-ink-body">{f.venue.address}</p>
-                      <p className="mt-4">
-                        <CrowdBadge
-                          crowd={f.crowd}
-                          source={f.crowdSource}
-                          ageMin={f.crowdAgeMin}
-                          rawPct={f.crowdRawPct}
-                        />
-                      </p>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
-        </>
+      {/* Map */}
+      {ranked.length > 0 ? (
+        <section>
+          <SectionHeader title="On the map" eyebrow="Venues" />
+          <div className="overflow-hidden rounded-lg border border-outline-variant">
+            <VenueMapLazy markers={mapMarkers} highlightId={ranked[0]?.venue.id} />
+          </div>
+        </section>
+      ) : null}
+
+      {/* Three buckets: Official · Public · Bars */}
+      {grouped.map((bucket) =>
+        bucket.items.length === 0 ? null : (
+          <section key={bucket.id} id={bucket.id}>
+            <SectionHeader title={bucket.label} eyebrow={bucket.description} />
+            <ol className="space-y-gutter">
+              {bucket.items.map((r, idx) => (
+                <li key={r.venue.id}>
+                  <RankedRow rank={idx + 1} item={r} />
+                </li>
+              ))}
+            </ol>
+          </section>
+        ),
       )}
     </main>
+  );
+}
+
+function RankedRow({ rank, item }: { rank: number; item: RankedVenue }) {
+  const v = item.venue;
+  const color = colorFromConfidence(item.crowd);
+  const occupancyLabel =
+    item.crowd === "open"
+      ? "Open"
+      : item.crowd === "room"
+        ? "Comfortable"
+        : item.crowd === "filling_up"
+          ? "Filling up"
+          : item.crowd === "packed"
+            ? "Tight"
+            : "Full";
+
+  return (
+    <Link
+      href={`/venues/${v.id}`}
+      className="group flex flex-col gap-stack-md overflow-hidden rounded-lg border border-outline-variant bg-surface-container-lowest transition hover:-translate-y-[1px] hover:border-primary hover:shadow-ambient md:flex-row"
+    >
+      {/* Rank + image */}
+      <div className="relative flex-none overflow-hidden bg-surface-container md:w-72">
+        <div className="absolute left-stack-md top-stack-md z-10 flex h-9 w-9 items-center justify-center rounded-md bg-on-surface text-body-sm font-bold text-background">
+          {String(rank).padStart(2, "0")}
+        </div>
+        {v.photo_url ? (
+          <Image
+            src={v.photo_url}
+            alt={v.name}
+            width={600}
+            height={400}
+            sizes="(max-width: 768px) 100vw, 288px"
+            className="h-44 w-full object-cover md:h-full"
+          />
+        ) : (
+          <div className="flex h-44 items-center justify-center text-5xl text-on-surface-variant md:h-full">
+            🏳️
+          </div>
+        )}
+      </div>
+
+      {/* Body */}
+      <div className="flex flex-1 flex-col gap-stack-md p-stack-lg">
+        <div>
+          <h3 className="text-headline-md text-on-surface group-hover:text-primary">
+            {v.name}
+          </h3>
+          <p className="mt-stack-sm text-body-sm text-on-surface-variant">
+            {v.address}
+          </p>
+        </div>
+        <p className="text-body-sm text-on-surface-variant">{item.reason}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <OccupancyBadge color={color} label={occupancyLabel} size="sm" />
+          {v.atmosphere?.vibe ? (
+            <Chip tone="neutral" size="sm">
+              {v.atmosphere.vibe}
+            </Chip>
+          ) : null}
+          <Chip tone="neutral" size="sm">
+            {v.indoor_outdoor}
+          </Chip>
+        </div>
+      </div>
+    </Link>
   );
 }
