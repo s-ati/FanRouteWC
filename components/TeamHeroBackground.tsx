@@ -36,6 +36,18 @@ export default function TeamHeroBackground({
           style={{ opacity: i === active ? 1 : 0 }}
           aria-hidden={i !== active}
         >
+          {/* Blurred backdrop: fills the entire box so the focal image
+              can `object-contain` without harsh letterbox bars. */}
+          <Image
+            src={src}
+            alt=""
+            fill
+            sizes="(max-width: 1024px) 100vw, 1280px"
+            priority={i === 0}
+            quality={70}
+            className="scale-110 object-cover blur-2xl saturate-125"
+          />
+          {/* Focal image: contained so the FULL photo always fits. */}
           <Image
             src={src}
             alt=""
@@ -43,7 +55,7 @@ export default function TeamHeroBackground({
             sizes="(max-width: 1024px) 100vw, 1280px"
             priority={i === 0}
             quality={95}
-            className="object-cover"
+            className="object-contain"
           />
         </div>
       ))}
