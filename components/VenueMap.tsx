@@ -12,8 +12,12 @@ export type MapMarker = {
   lng: number;
   /** legacy tier; kept so existing call sites still compile */
   tier?: "primary" | "secondary" | "fallback";
-  /** true → gold pulse marker; false → silver diamond bar marker */
+  /** true → official fan bar (gold pulse); false → regular bar (silver diamond) */
   isOfficial?: boolean;
+  /** when true → render a star marker (any public fan zone / watch party) */
+  isPublicSpot?: boolean;
+  /** FIFA-sanctioned star — brighter gold than a public-spot star */
+  isFifaOfficial?: boolean;
   href?: string;
   subtitle?: string;
   /** atmosphere tag — e.g. "Hardcore", "Party"; rendered in the glass preview */
@@ -44,17 +48,28 @@ function isOfficialMarker(m: MapMarker): boolean {
 }
 
 function buildMarkerIcon(m: MapMarker, active: boolean): L.DivIcon {
-  const official = isOfficialMarker(m);
+  const isFifa = m.isFifaOfficial === true;
+  const isZone = !isFifa && m.isPublicSpot === true;
+  const official = !isFifa && !isZone && isOfficialMarker(m);
+  const tierClass = isFifa
+    ? "fr-marker--fifa"
+    : isZone
+      ? "fr-marker--zone"
+      : official
+        ? "fr-marker--official"
+        : "fr-marker--bar";
   const cls = [
     "fr-marker",
-    official ? "fr-marker--official" : "fr-marker--bar",
+    tierClass,
     active ? "fr-marker--active" : "",
   ]
     .filter(Boolean)
     .join(" ");
-  const html = official
-    ? `<span class="fr-pulse"></span><span class="fr-dot"></span>`
-    : `<span class="fr-dot"></span>`;
+  const html = isFifa || isZone
+    ? `<span class="fr-star" aria-hidden>★</span>`
+    : official
+      ? `<span class="fr-pulse"></span><span class="fr-dot"></span>`
+      : `<span class="fr-dot"></span>`;
   return L.divIcon({
     className: cls,
     html,
@@ -186,15 +201,9 @@ export default function VenueMap({
     };
   }, [mapInst, previewMarker]);
 
-  // Both variants use CARTO's "dark" basemap so the map blends with the
-  // Deep Navy FIFA palette. Hub variant drops the labels and stacks a
-  // labels-only layer at lower opacity for that "screen" look.
+  // CARTO Voyager — colorful, readable basemap with subtle shading.
   const tileUrl =
-    variant === "hub"
-      ? "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png"
-      : "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
-  const labelUrl =
-    "https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png";
+    "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
 
   return (
     <div
@@ -215,7 +224,6 @@ export default function VenueMap({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
           url={tileUrl}
         />
-        {variant === "hub" ? <TileLayer url={labelUrl} opacity={0.5} /> : null}
         <MapBridge onMap={setMapInst} />
         <FitBounds markers={markers} />
         <MarkerLayer
@@ -241,8 +249,17 @@ function GlassPreview({
   marker: MapMarker;
   pos: { x: number; y: number };
 }) {
-  const official = isOfficialMarker(marker);
-  const tag = marker.vibe ?? (official ? "Official" : "Bar");
+  const isFifa = marker.isFifaOfficial === true;
+  const isZone = !isFifa && marker.isPublicSpot === true;
+  const official = !isFifa && !isZone && isOfficialMarker(marker);
+  const kindLabel = isFifa
+    ? "★ Official"
+    : isZone
+      ? "★ Public"
+      : official
+        ? "● Fans"
+        : "◆ Bar";
+  const tag = marker.vibe ?? (isFifa ? "Official" : isZone ? "Public" : official ? "Fans" : "Bar");
   return (
     <div
       className="fr-preview"
@@ -262,16 +279,16 @@ function GlassPreview({
           />
         ) : (
           <div className="fr-preview__photo fr-preview__photo--placeholder">
-            {official ? "⭐" : "🍺"}
+            {isFifa || isZone ? "⭐" : official ? "🏟️" : "🍺"}
           </div>
         )}
         <div className="fr-preview__body">
           <div
             className={`fr-preview__tag ${
-              official ? "" : "fr-preview__tag--bar"
+              isFifa || isZone || official ? "" : "fr-preview__tag--bar"
             }`}
           >
-            {official ? "● Official" : "◆ Bar"} · {tag}
+            {kindLabel} · {tag}
           </div>
           <div className="fr-preview__name">{marker.name}</div>
         </div>

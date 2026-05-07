@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "lh5.googleusercontent.com" },
       { protocol: "https", hostname: "lh6.googleusercontent.com" },
       { protocol: "https", hostname: "streetviewpixels-pa.googleapis.com" },
+      { protocol: "https", hostname: "images.unsplash.com" },
     ],
   },
 };

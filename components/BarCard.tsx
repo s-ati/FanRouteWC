@@ -59,13 +59,17 @@ export default function BarCard({
             {flagFallback || "🏳️"}
           </span>
         )}
-        {bar.isOfficial ? (
-          <div className="absolute left-stack-md top-stack-md">
+        <div className="absolute left-stack-md top-stack-md">
+          {bar.isOfficial ? (
             <Chip tone="primary" size="sm" icon="verified">
-              Official
+              Fans
             </Chip>
-          </div>
-        ) : null}
+          ) : (
+            <Chip tone="neutral" size="sm">
+              Bar
+            </Chip>
+          )}
+        </div>
       </div>
 
       {/* Content */}

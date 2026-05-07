@@ -13,7 +13,9 @@ export type HubVenue = {
   address: string | null;
   lat: number;
   lng: number;
-  isOfficial: boolean;
+  isOfficial: boolean;        // "Fans" — home_bar role bars (was "Official Fan")
+  isPublicSpot?: boolean;     // "Public" — non-FIFA public watch parties / fan zones
+  isFifaOfficial?: boolean;   // "Official" — FIFA-sanctioned spot (e.g. Thrive City)
   vibe: string | null;
   photoUrl: string | null;
 };
@@ -38,6 +40,8 @@ export default function VenueHub({
     lat: v.lat,
     lng: v.lng,
     isOfficial: v.isOfficial,
+    isPublicSpot: v.isPublicSpot === true || v.isFifaOfficial === true,
+    isFifaOfficial: v.isFifaOfficial === true,
     vibe: v.vibe,
     photoUrl: v.photoUrl,
     href: `/venues/${v.id}`,
@@ -58,7 +62,27 @@ export default function VenueHub({
             {title}
           </h2>
         </div>
-        <div className="flex items-center gap-4 text-label-caps font-bold uppercase tracking-[0.05em] text-on-surface-variant">
+        <div className="flex flex-wrap items-center gap-4 text-label-caps font-bold uppercase tracking-[0.05em] text-on-surface-variant">
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              aria-hidden
+              className="inline-block text-base leading-none"
+              style={{ color: "#FFCE00" }}
+            >
+              ★
+            </span>
+            Official
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              aria-hidden
+              className="inline-block text-base leading-none"
+              style={{ color: "#F59E0B" }}
+            >
+              ★
+            </span>
+            Public
+          </span>
           <span className="inline-flex items-center gap-1.5">
             <span
               className="inline-block h-2.5 w-2.5 rounded-full"
@@ -68,7 +92,7 @@ export default function VenueHub({
               }}
               aria-hidden
             />
-            Official
+            Fans
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span
@@ -153,24 +177,36 @@ function HubCard({
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-4xl">
-            {venue.isOfficial ? "⭐" : "🍺"}
+            {venue.isPublicSpot ? "⭐" : venue.isOfficial ? "🏟️" : "🍺"}
           </div>
         )}
         <div className="absolute left-3 top-3">
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] ${
-              venue.isOfficial
-                ? "text-[#0c1116]"
-                : "bg-white/85 text-[#0c1116]"
-            }`}
-            style={
-              venue.isOfficial
-                ? { background: "#FFCE00", boxShadow: "0 0 14px rgba(255,206,0,0.5)" }
-                : undefined
-            }
-          >
-            {venue.isOfficial ? "● Official" : "◆ Bar"}
-          </span>
+          {venue.isFifaOfficial ? (
+            <span
+              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#0c1116]"
+              style={{ background: "#FFCE00", boxShadow: "0 0 16px rgba(255,206,0,0.7)" }}
+            >
+              ★ Official
+            </span>
+          ) : venue.isPublicSpot ? (
+            <span
+              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#0c1116]"
+              style={{ background: "#F59E0B", boxShadow: "0 0 14px rgba(245,158,11,0.55)" }}
+            >
+              ★ Public
+            </span>
+          ) : venue.isOfficial ? (
+            <span
+              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#0c1116]"
+              style={{ background: "#FFCE00", boxShadow: "0 0 14px rgba(255,206,0,0.5)" }}
+            >
+              ● Fans
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-white/85 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#0c1116]">
+              ◆ Bar
+            </span>
+          )}
         </div>
       </div>
       <div className="p-stack-md">

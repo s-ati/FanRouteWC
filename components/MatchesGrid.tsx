@@ -39,7 +39,19 @@ export default function MatchesGrid({
 
   const [team, setTeam] = useState<string>(initial);
 
-  const allTeams = useMemo(() => teamsFromMatches(matches), [matches]);
+  // Only real FIFA teams in the dropdown — drop knockout placeholder codes
+  // (W73, W101, T3, L101, 1A, 2B, etc.) that don't resolve to a team.
+  const allTeams = useMemo(
+    () =>
+      teamsFromMatches(matches)
+        .filter((code) => getTeamByCode(code) != null)
+        .sort((a, b) => {
+          const an = getTeamByCode(a)?.name ?? a;
+          const bn = getTeamByCode(b)?.name ?? b;
+          return an.localeCompare(bn);
+        }),
+    [matches],
+  );
 
   const visible = useMemo(() => {
     if (team === "ALL") return matches;
@@ -84,7 +96,7 @@ export default function MatchesGrid({
                 const name = getTeamByCode(code)?.name ?? code;
                 return (
                   <option key={code} value={code}>
-                    {name} ({code})
+                    {name}
                   </option>
                 );
               })}

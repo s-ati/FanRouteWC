@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import HeroTile from "@/components/HeroTile";
 import KnockoutBracket from "@/components/KnockoutBracket";
 import MatchHero from "@/components/MatchHero";
 import MatchesGrid from "@/components/MatchesGrid";
@@ -182,6 +183,7 @@ export default async function HomePage() {
   const hubMap = new Map<string, HubVenue>();
   for (const fz of fanZones) {
     if (!Number.isFinite(fz.lat) || !Number.isFinite(fz.lng)) continue;
+    const isFifa = fz.source_type === "fifa_official";
     hubMap.set(fz.id, {
       id: fz.id,
       name: fz.name,
@@ -189,7 +191,9 @@ export default async function HomePage() {
       address: fz.address ?? null,
       lat: fz.lat,
       lng: fz.lng,
-      isOfficial: true,
+      isOfficial: false,
+      isPublicSpot: !isFifa,    // ★ Public  for non-FIFA fan zones / watch parties
+      isFifaOfficial: isFifa,   // ★ Official for the FIFA-sanctioned spot
       vibe: fz.atmosphere?.vibe ?? null,
       photoUrl: fz.photo_url ?? null,
     });
@@ -205,6 +209,7 @@ export default async function HomePage() {
       lat: b.venue.lat,
       lng: b.venue.lng,
       isOfficial: b.role === "home_bar",
+      isPublicSpot: false,
       vibe: b.venue.atmosphere?.vibe ?? null,
       photoUrl: b.venue.photo_url ?? null,
     });

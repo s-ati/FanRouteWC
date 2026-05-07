@@ -45,16 +45,40 @@ export default function MatchHero({ data }: { data: MatchHeroData }) {
     >
       {hasSlideshow ? (
         <TeamHeroBackground images={data.backgroundImages!} />
-      ) : null}
+      ) : (
+        // No team photo set yet — render a giant flag watermark + cyan
+        // glow so the hero still has visual identity instead of an empty
+        // navy box. Drop photos into public/images/teams/<slug>/ to
+        // replace this fallback for the team.
+        <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
+          <span
+            aria-hidden
+            className="select-none text-[280px] leading-none opacity-15 md:text-[420px]"
+          >
+            {flagEmoji(data.homeCode) || "🏳️"}
+          </span>
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -top-24 -left-16 h-96 w-96 rounded-full opacity-50 blur-3xl"
+            style={{
+              background:
+                "radial-gradient(circle, rgba(0, 163, 224, 0.65), rgba(0, 163, 224, 0) 70%)",
+            }}
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -bottom-24 -right-16 h-96 w-96 rounded-full opacity-40 blur-3xl"
+            style={{
+              background:
+                "radial-gradient(circle, rgba(125, 211, 252, 0.55), rgba(125, 211, 252, 0) 70%)",
+            }}
+          />
+        </div>
+      )}
 
-      {/* Deep Navy FIFA wash — blends the stadium image into the navy
-          page bg instead of relying on a pure-black gradient. */}
-      <div
-        className="absolute inset-0"
-        style={{ backgroundColor: "rgba(0, 23, 95, 0.6)", mixBlendMode: "multiply" }}
-        aria-hidden
-      />
-      <div className="absolute inset-0 bg-gradient-to-t from-[#00175F] via-[rgba(0,23,95,0.45)] to-transparent" />
+      {/* Bottom-only gradient — keeps the photo visible while giving the
+          headline + countdown enough contrast to read at the bottom. */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent" />
 
       <div className="relative z-10 flex w-full flex-col items-start justify-between gap-stack-lg md:flex-row md:items-end">
         <div className="space-y-stack-md text-white">

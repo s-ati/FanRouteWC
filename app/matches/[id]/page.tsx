@@ -64,12 +64,19 @@ export default async function MatchPage({ params }: Params) {
     for (const a of affinityBars) fanBarIds.add(a.venue.id);
   }
 
+  // Official = FIFA-sanctioned only (source_type === "fifa_official").
+  // Everything else that's a public-access spot (city / partner watch
+  // parties, credible public venues) goes into Public.
   const officialItems = ranked.filter(
-    (r) =>
-      r.venue.type === "official_fan_zone" ||
-      r.venue.type === "official_watch_party",
+    (r) => r.venue.source_type === "fifa_official",
   );
-  const publicItems = ranked.filter((r) => r.venue.type === "credible_public");
+  const publicItems = ranked.filter(
+    (r) =>
+      r.venue.source_type !== "fifa_official" &&
+      (r.venue.type === "official_fan_zone" ||
+        r.venue.type === "official_watch_party" ||
+        r.venue.type === "credible_public"),
+  );
   const allBarItems = ranked.filter((r) => r.venue.type === "fallback_bar");
   const fanBarItems = pickedCode
     ? allBarItems.filter((r) => fanBarIds.has(r.venue.id))

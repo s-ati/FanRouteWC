@@ -77,7 +77,7 @@ export default function UpcomingMatchCard({
         }}
       />
 
-      {/* Navy multiply wash — sinks the stadium image into the page bg
+      {/* Navy multiply wash — sinks the stadium photo into the page bg
           per the Deep Navy FIFA spec (#00175F at 60%). */}
       <div
         aria-hidden
