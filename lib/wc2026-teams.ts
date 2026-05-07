@@ -14,7 +14,7 @@ export const WC_2026_TEAMS: WCTeam[] = [
   { code: "MEX", name: "Mexico" },
   { code: "CAN", name: "Canada" },
 
-  // UEFA
+  // UEFA (16)
   { code: "ENG", name: "England" },
   { code: "FRA", name: "France" },
   { code: "GER", name: "Germany" },
@@ -22,13 +22,10 @@ export const WC_2026_TEAMS: WCTeam[] = [
   { code: "POR", name: "Portugal" },
   { code: "NED", name: "Netherlands" },
   { code: "BEL", name: "Belgium" },
-  { code: "ITA", name: "Italy" },
   { code: "CRO", name: "Croatia" },
   { code: "SUI", name: "Switzerland" },
   { code: "AUT", name: "Austria" },
-  { code: "POL", name: "Poland" },
   { code: "NOR", name: "Norway" },
-  { code: "DEN", name: "Denmark" },
   { code: "TUR", name: "Türkiye" },
   { code: "SCO", name: "Scotland" },
   { code: "CZE", name: "Czechia" },
@@ -44,13 +41,11 @@ export const WC_2026_TEAMS: WCTeam[] = [
   { code: "PAR", name: "Paraguay" },
 
   // CONCACAF (3 + 3 hosts already counted)
-  { code: "JAM", name: "Jamaica" },
-  { code: "CRC", name: "Costa Rica" },
   { code: "PAN", name: "Panama" },
   { code: "HAI", name: "Haiti" },
   { code: "CUW", name: "Curaçao" },
 
-  // CAF
+  // CAF (9 + Cabo Verde via inter-confederation playoff)
   { code: "MAR", name: "Morocco" },
   { code: "TUN", name: "Tunisia" },
   { code: "EGY", name: "Egypt" },
@@ -58,10 +53,9 @@ export const WC_2026_TEAMS: WCTeam[] = [
   { code: "GHA", name: "Ghana" },
   { code: "SEN", name: "Senegal" },
   { code: "CIV", name: "Côte d'Ivoire" },
-  { code: "NGA", name: "Nigeria" },
-  { code: "CMR", name: "Cameroon" },
   { code: "RSA", name: "South Africa" },
   { code: "COD", name: "Congo DR" },
+  { code: "CPV", name: "Cabo Verde" },
 
   // AFC
   { code: "JPN", name: "Japan" },
@@ -76,10 +70,6 @@ export const WC_2026_TEAMS: WCTeam[] = [
 
   // OFC (1)
   { code: "NZL", name: "New Zealand" },
-
-  // Inter-confederation playoffs (2) — placeholders, edit when finalized.
-  { code: "BOL", name: "Bolivia" },
-  { code: "CPV", name: "Cabo Verde" },
 ];
 
 export const SF_OFFICIAL_FAN_ZONES = [

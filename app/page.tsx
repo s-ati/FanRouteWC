@@ -252,7 +252,7 @@ export default async function HomePage() {
         </p>
         <ul
           role="list"
-          className="grid grid-cols-1 gap-2 md:grid-cols-3"
+          className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-4"
         >
           <li>
             <HeroTile
@@ -262,6 +262,16 @@ export default async function HomePage() {
               cta="All venues"
               icon="stadium"
               accent="amber"
+            />
+          </li>
+          <li>
+            <HeroTile
+              href="/bars"
+              eyebrow="Supporter spots"
+              title="Bars"
+              cta="All bars"
+              icon="sports_bar"
+              accent="primary"
             />
           </li>
           <li>
