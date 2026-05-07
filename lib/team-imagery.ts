@@ -1,24 +1,59 @@
-// Team-specific hero imagery for the personalized home/country pages.
-// Add entries per country code as we license/source photos. Images live
-// in `public/images/teams/`.
-//
-// Constraint for the prototype: only photos of the actual national team
-// (players in NT context), 2024 or newer.
-//
-// Sources for the included Germany set:
-//   - wirtz-musiala.jpg  — user upload (Wirtz & Musiala together, 2024+)
-//   - wirtz-2024.jpg     — Florian Wirtz, 2024 (Wikimedia, CC BY-SA)
-//   - wirtz-2026-2.jpg   — Florian Wirtz, Jan 2026 (Wikimedia, CC BY-SA)
+import { existsSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 
-export const TEAM_HERO_IMAGES: Record<string, string[]> = {
-  GER: [
-    "/images/teams/wirtz-musiala.jpg",
-    "/images/teams/wirtz-2024.jpg",
-    "/images/teams/wirtz-2026-2.jpg",
-  ],
+// Team-specific hero imagery. Folder convention:
+//   public/images/teams/<slug>/*.{jpg,jpeg,png,webp}
+//
+// Drop any number of images into that folder — they're all picked up
+// at request time (server component reads fs). Filenames are sorted
+// alphabetically so prefixing with `01-`, `02-` controls order.
+//
+// Slug map below resolves a 3-letter FIFA code to a folder name.
+// Add an entry for each team you've sourced photos for.
+
+const TEAM_FOLDERS: Record<string, string> = {
+  GER: "germany",
+  USA: "usa",
+  MEX: "mexico",
+  ENG: "england",
+  ARG: "argentina",
+  BRA: "brazil",
+  FRA: "france",
+  ESP: "spain",
+  POR: "portugal",
+  NED: "netherlands",
+  ITA: "italy",
+  KOR: "korea",
+  JPN: "japan",
 };
+
+const IMAGE_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
+
+const ROOT = join(process.cwd(), "public", "images", "teams");
 
 export function teamHeroImages(code: string | null | undefined): string[] {
   if (!code) return [];
-  return TEAM_HERO_IMAGES[code.toUpperCase()] ?? [];
+  const slug = TEAM_FOLDERS[code.toUpperCase()];
+  if (!slug) return [];
+
+  const dir = join(ROOT, slug);
+  if (!existsSync(dir)) return [];
+
+  let entries: string[] = [];
+  try {
+    entries = readdirSync(dir);
+  } catch {
+    return [];
+  }
+
+  return entries
+    .filter((name) => {
+      const lower = name.toLowerCase();
+      const dot = lower.lastIndexOf(".");
+      if (dot < 0) return false;
+      return IMAGE_EXTS.has(lower.slice(dot));
+    })
+    .filter((name) => !name.startsWith(".")) // skip .DS_Store etc.
+    .sort()
+    .map((name) => `/images/teams/${slug}/${name}`);
 }
