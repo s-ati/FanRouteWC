@@ -95,39 +95,49 @@ export default function MatchHero({ data }: { data: MatchHeroData }) {
             ) : null}
           </div>
 
-          <h1 className="text-display-xl text-white drop-shadow-md">
-            <span className="inline-flex items-center gap-3">
-              <span aria-hidden className="text-[0.7em]">
+          <h1 className="text-2xl font-extrabold leading-[1.05] text-white drop-shadow-md md:text-display-xl">
+            <span className="inline-flex items-center gap-2">
+              <span aria-hidden className="text-[0.85em]">
                 {flagEmoji(data.homeCode) || "🏳️"}
               </span>
               <span>{data.homeCode}</span>
             </span>
-            <span className="mx-3 align-middle font-light text-white/70">v</span>
-            <span className="inline-flex items-center gap-3">
-              <span aria-hidden className="text-[0.7em]">
+            <span className="mx-2 align-middle font-light text-white/70 md:mx-3">
+              v
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <span aria-hidden className="text-[0.85em]">
                 {flagEmoji(data.awayCode) || "🏳️"}
               </span>
               <span>{data.awayCode}</span>
             </span>
           </h1>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-headline-md font-semibold text-white">
-            <span className="inline-flex items-center gap-2">
-              <span className="material-symbols-outlined" aria-hidden>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-body-sm font-semibold text-white md:text-headline-md">
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="material-symbols-outlined"
+                aria-hidden
+                style={{ fontSize: "16px" }}
+              >
                 timer
               </span>
               {data.countdownText}
             </span>
             {data.hostStadium ? (
-              <span className="inline-flex items-center gap-2 text-body-main font-normal text-white/80">
-                <span className="material-symbols-outlined" aria-hidden>
+              <span className="inline-flex items-center gap-1.5 font-normal text-white/80">
+                <span
+                  className="material-symbols-outlined"
+                  aria-hidden
+                  style={{ fontSize: "16px" }}
+                >
                   stadium
                 </span>
                 {data.hostStadium}
               </span>
             ) : null}
             {data.kickoffLocal ? (
-              <span className="text-body-sm text-white/80">
+              <span className="text-[12px] font-normal text-white/80 md:text-body-sm">
                 {data.kickoffLocal}
               </span>
             ) : null}
@@ -137,10 +147,14 @@ export default function MatchHero({ data }: { data: MatchHeroData }) {
         {data.ctaHref ? (
           <Link
             href={data.ctaHref}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-3 text-body-main font-semibold text-on-primary shadow-ambient transition hover:bg-primary-container"
+            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-body-sm font-semibold text-on-primary shadow-ambient transition hover:bg-primary-container md:gap-2 md:rounded-lg md:px-5 md:py-3 md:text-body-main"
           >
             {data.ctaLabel || "Where to watch"}
-            <span className="material-symbols-outlined" aria-hidden>
+            <span
+              className="material-symbols-outlined"
+              aria-hidden
+              style={{ fontSize: "14px" }}
+            >
               arrow_forward
             </span>
           </Link>
