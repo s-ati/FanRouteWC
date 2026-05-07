@@ -2,7 +2,8 @@
   "crons": [
     {
       "path": "/api/cron/poll-crowds",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 12 * * *"
     }
   ]
 }
+
