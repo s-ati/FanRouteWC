@@ -1,12 +1,22 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Manrope, Newsreader, Geist_Mono } from "next/font/google";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import BottomNav from "@/components/BottomNav";
 import "./globals.css";
 
-const geistSans = Geist({
+const manrope = Manrope({
   subsets: ["latin"],
-  variable: "--font-geist-sans",
+  weight: ["400", "600", "700", "800"],
+  variable: "--font-manrope",
+  display: "swap",
+});
+
+const newsreader = Newsreader({
+  subsets: ["latin"],
+  weight: ["400"],
+  style: ["italic"],
+  variable: "--font-newsreader",
   display: "swap",
 });
 
@@ -19,7 +29,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "FanRoute — San Francisco",
   description:
-    "The official place to watch the match. Find fan zones, crowd confidence, and the nearest fallback for every 2026 FIFA World Cup fixture in San Francisco.",
+    "Your matchday companion for the 2026 FIFA World Cup in San Francisco. Pick your team, find the right bar, watch with the crowd that gets it.",
 };
 
 export default function RootLayout({
@@ -28,12 +38,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body className="flex min-h-screen flex-col bg-paper text-ink-body">
-        <div className="grain" aria-hidden />
+    <html
+      lang="en"
+      className={`${manrope.variable} ${newsreader.variable} ${geistMono.variable}`}
+    >
+      <head>
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,300..700,0..1,-50..200&display=swap"
+        />
+      </head>
+      <body className="flex min-h-screen flex-col bg-background pb-24 text-on-background md:pb-0">
         <SiteHeader />
         <div className="flex-1">{children}</div>
         <SiteFooter />
+        <BottomNav />
       </body>
     </html>
   );
