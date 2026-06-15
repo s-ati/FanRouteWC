@@ -2,10 +2,13 @@ import Link from "next/link";
 import KnockoutBracket from "@/components/KnockoutBracket";
 import SectionHeader from "@/components/SectionHeader";
 import StandingsTable, { type StandingsRow } from "@/components/StandingsTable";
-import { buildGroupSummaries, GROUP_LETTERS } from "@/lib/groups";
+import { buildGroupSummaries, computeStandings } from "@/lib/groups";
 import { getAllFixtures } from "@/lib/queries";
 import { mergeFixturesIntoSchedule } from "@/lib/wc2026-matches";
-import { getScheduleAsMatchCards, WC2026_SCHEDULE } from "@/lib/wc2026-schedule";
+import {
+  getScheduleAsMatchCards,
+  scheduleAsFixtures,
+} from "@/lib/wc2026-schedule";
 import { WC2026_STADIUMS } from "@/lib/wc2026-stadiums";
 import { getTeamByCode } from "@/lib/wc2026-teams";
 import { groupFromStage } from "@/lib/groups";
@@ -13,46 +16,12 @@ import type { Fixture } from "@/lib/types";
 
 export const revalidate = 60;
 
-// Build a synthetic Fixture[] from the static schedule for the standings
-// derivation — uses team codes only, dates are placeholder.
-function scheduleAsFixtures(): Fixture[] {
-  return WC2026_SCHEDULE.filter((e) =>
-    GROUP_LETTERS.includes(e.stage.replace("group-", "").toUpperCase() as
-      | "A"
-      | "B"
-      | "C"
-      | "D"
-      | "E"
-      | "F"
-      | "G"
-      | "H"
-      | "I"
-      | "J"
-      | "K"
-      | "L"),
-  ).map((e) => ({
-    match_id: e.matchId,
-    city_id: "san-francisco",
-    stage: e.stage,
-    home_team: e.homeCode,
-    away_team: e.awayCode,
-    kickoff_local: `${e.dateIso}T19:00:00Z`,
-    kickoff_utc: `${e.dateIso}T19:00:00Z`,
-    played_in_bay_area: false,
-    host_city: e.stadiumId,
-    notes: null,
-    last_verified: "2026-05-07",
-  }));
-}
-
 export default async function KnowledgePage() {
   const supabaseFixtures = await getAllFixtures().catch((): Fixture[] => []);
-  // Use Supabase fixtures where present, else fall back to schedule constant.
-  // Standings only need group-stage entries with real team codes — both sources
-  // satisfy that.
-  const groupFixtures = supabaseFixtures.length
-    ? supabaseFixtures.filter((f) => groupFromStage(f.stage))
-    : scheduleAsFixtures();
+  // Always derive group fixtures from the canonical full schedule
+  // (72 group matches). Supabase only has SF-scoped target-team fixtures
+  // so it misses matches like KOR–CZE that affect Group A's table.
+  const groupFixtures = scheduleAsFixtures();
 
   const groups = buildGroupSummaries(groupFixtures);
 
@@ -120,15 +89,16 @@ export default async function KnowledgePage() {
         />
         <div className="grid grid-cols-1 gap-gutter md:grid-cols-2">
           {groups.map((g) => {
-            const rows: StandingsRow[] = g.teams.map((code) => ({
-              countryCode: code,
-              name: getTeamByCode(code)?.name ?? code,
-              played: 0,
-              wins: 0,
-              draws: 0,
-              losses: 0,
-              goalDiff: 0,
-              points: 0,
+            const lines = computeStandings(g.teams, groupFixtures);
+            const rows: StandingsRow[] = lines.map((s) => ({
+              countryCode: s.code,
+              name: getTeamByCode(s.code)?.name ?? s.code,
+              played: s.played,
+              wins: s.wins,
+              draws: s.draws,
+              losses: s.losses,
+              goalDiff: s.goalDiff,
+              points: s.points,
             }));
             return (
               <div key={g.letter}>
@@ -138,7 +108,7 @@ export default async function KnowledgePage() {
           })}
         </div>
         <p className="mt-stack-md text-body-sm text-on-surface-variant">
-          <em>Standings populate once group stage results land.</em>
+          <em>Live through the latest completed match day.</em>
         </p>
       </section>
 

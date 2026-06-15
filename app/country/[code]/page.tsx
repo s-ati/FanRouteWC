@@ -24,8 +24,14 @@ import {
 } from "@/lib/queries";
 import type { Fixture } from "@/lib/types";
 import { teamHeroImages } from "@/lib/team-imagery";
+import { demoBarPhotoFor } from "@/lib/demo-bar-photos";
 import { mergeFixturesIntoSchedule } from "@/lib/wc2026-matches";
-import { findGroupForTeam, getScheduleAsMatchCards } from "@/lib/wc2026-schedule";
+import {
+  findGroupForTeam,
+  getScheduleAsMatchCards,
+  scheduleAsFixtures,
+} from "@/lib/wc2026-schedule";
+import { computeStandings } from "@/lib/groups";
 import { SF_OFFICIAL_FAN_ZONES, getTeamByCode } from "@/lib/wc2026-teams";
 
 export const revalidate = 60;
@@ -113,18 +119,19 @@ export default async function CountryDetailPage({
   ).filter((m) => new Date(m.kickoffUtc).getTime() >= Date.now());
 
   const group = findGroupForTeam(upperCode);
-  const groupRows: StandingsRow[] = group
-    ? group.teams.map((c) => ({
-        countryCode: c,
-        name: getTeamByCode(c)?.name ?? c,
-        played: 0,
-        wins: 0,
-        draws: 0,
-        losses: 0,
-        goalDiff: 0,
-        points: 0,
-      }))
+  const standings = group
+    ? computeStandings(group.teams, scheduleAsFixtures())
     : [];
+  const groupRows: StandingsRow[] = standings.map((s) => ({
+    countryCode: s.code,
+    name: getTeamByCode(s.code)?.name ?? s.code,
+    played: s.played,
+    wins: s.wins,
+    draws: s.draws,
+    losses: s.losses,
+    goalDiff: s.goalDiff,
+    points: s.points,
+  }));
 
   const officialBars = bars.filter((b) => b.role === "home_bar");
   const otherBars = bars.filter((b) => b.role !== "home_bar");
@@ -258,7 +265,7 @@ export default async function CountryDetailPage({
                 name: b.venue.name,
                 neighborhood: b.venue.neighborhood,
                 address: b.venue.address,
-                photoUrl: b.venue.photo_url,
+                photoUrl: demoBarPhotoFor(b.venue.id, b.venue.photo_url),
                 isOfficial: true,
                 teamLabel: displayName.toUpperCase(),
                 walkingTime: null,
@@ -294,7 +301,7 @@ export default async function CountryDetailPage({
                 name: b.venue.name,
                 neighborhood: b.venue.neighborhood,
                 address: b.venue.address,
-                photoUrl: b.venue.photo_url,
+                photoUrl: demoBarPhotoFor(b.venue.id, b.venue.photo_url),
                 isOfficial: false,
                 teamLabel: null,
                 walkingTime: null,

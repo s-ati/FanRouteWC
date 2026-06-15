@@ -9,6 +9,12 @@ import type { Fixture } from "./types";
 import { groupFromStage } from "./groups";
 import { stageLabel } from "./matchday";
 import { isBayArea, stadiumImagery } from "./stadium-imagery";
+import { getResultByMatchId } from "./wc2026-results";
+
+export type MatchScore = {
+  homeGoals: number;
+  awayGoals: number;
+};
 
 export type MatchCardData = {
   matchId: string;
@@ -22,6 +28,8 @@ export type MatchCardData = {
   city: string;
   isBayArea: boolean;
   backgroundUrl: string;
+  /** Final score when the match is complete; null while still upcoming. */
+  result?: MatchScore | null;
 };
 
 const PT_DATE: Intl.DateTimeFormatOptions = {
@@ -53,6 +61,7 @@ export function fixtureToMatchData(f: Fixture): MatchCardData {
   const cityKey = f.played_in_bay_area ? "san francisco bay area" : f.host_city;
   const imagery = stadiumImagery(cityKey);
 
+  const r = getResultByMatchId(f.match_id);
   return {
     matchId: f.match_id,
     group: stageLabel(f.stage).toUpperCase(),
@@ -65,6 +74,7 @@ export function fixtureToMatchData(f: Fixture): MatchCardData {
     city: f.played_in_bay_area ? "San Francisco Bay Area" : imagery.city,
     isBayArea: f.played_in_bay_area || isBayArea(f.host_city),
     backgroundUrl: imagery.imageUrl,
+    result: r ? { homeGoals: r.homeGoals, awayGoals: r.awayGoals } : null,
   };
 }
 

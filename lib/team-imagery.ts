@@ -94,3 +94,20 @@ export function teamHeroImages(code: string | null | undefined): string[] {
     .sort()
     .map((name) => `/images/teams/${slug}/${name}`);
 }
+
+// Interleave home + away photos so a match hero alternates between both teams.
+// Picked team's photo shows first so the "following" team still feels primary.
+export function matchHeroImages(
+  pickedCode: string | null | undefined,
+  opponentCode: string | null | undefined,
+): string[] {
+  const picked = teamHeroImages(pickedCode);
+  const opponent = teamHeroImages(opponentCode);
+  const out: string[] = [];
+  const max = Math.max(picked.length, opponent.length);
+  for (let i = 0; i < max; i++) {
+    if (i < picked.length) out.push(picked[i]);
+    if (i < opponent.length) out.push(opponent[i]);
+  }
+  return out;
+}

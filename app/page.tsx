@@ -19,17 +19,22 @@ import {
   getRankedBarsForCountry,
 } from "@/lib/queries";
 import type { Fixture } from "@/lib/types";
-import {
-  formatKickoffLocal,
-  kickoffCountdown,
-  stageLabel,
-} from "@/lib/matchday";
+import { flagEmoji } from "@/lib/flags";
 import { mergeFixturesIntoSchedule } from "@/lib/wc2026-matches";
-import { findGroupForTeam, getScheduleAsMatchCards } from "@/lib/wc2026-schedule";
+import {
+  findGroupForTeam,
+  getScheduleAsMatchCards,
+  scheduleAsFixtures,
+} from "@/lib/wc2026-schedule";
+import { computeStandings } from "@/lib/groups";
 import { COUNTRY_COOKIE, readPickedCountry } from "@/lib/country-cookie";
 import { getTeamByCode } from "@/lib/wc2026-teams";
 import { occupancyVerdict } from "@/lib/crowd/occupancy-copy";
-import { teamHeroImages } from "@/lib/team-imagery";
+import { matchHeroImages, teamHeroImages } from "@/lib/team-imagery";
+import {
+  demoBarPhotoFor,
+  demoFanZonePhotoFor,
+} from "@/lib/demo-bar-photos";
 
 export const revalidate = 60;
 
@@ -70,6 +75,17 @@ function minutesToKickoff(f: Fixture, now = new Date()): number {
     0,
     Math.round((new Date(f.kickoff_utc).getTime() - now.getTime()) / 60000),
   );
+}
+
+function countdownFromIso(iso: string, now = new Date()): string {
+  const ms = new Date(iso).getTime() - now.getTime();
+  if (ms <= 0) return "Kicked off";
+  const mins = Math.floor(ms / 60000);
+  if (mins < 60) return `in ${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 48) return `in ${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `in ${days}d`;
 }
 
 // ---------------------------------------------------------------------------
@@ -122,28 +138,63 @@ export default async function HomePage() {
     (f) => new Date(f.kickoff_utc).getTime() >= Date.now(),
   );
   const next = teamUpcoming[0];
+  // `next` above only sees the Supabase-seeded SF target-team fixtures, so
+  // non-target teams (URU, KSA, KOR, etc.) would hit the fallback hero. Use
+  // the merged full WC schedule below so every one of the 48 teams gets a
+  // proper "next match" hero — Supabase kickoff times still overlay where
+  // present via mergeFixturesIntoSchedule.
 
   // Full WC2026 tournament — 104 matches from the static schedule,
-  // overlaid with Supabase kickoff times where available. Filtered to
-  // upcoming so the grid stays forward-looking.
-  const allUpcoming = mergeFixturesIntoSchedule(
+  // overlaid with Supabase kickoff times where available.
+  const allMerged = mergeFixturesIntoSchedule(
     getScheduleAsMatchCards(),
     allFixtures,
-  ).filter((m) => new Date(m.kickoffUtc).getTime() >= Date.now());
+  );
+  const allUpcoming = allMerged.filter(
+    (m) => new Date(m.kickoffUtc).getTime() >= Date.now(),
+  );
+  // Latest results — most recent 4 completed matches, newest first.
+  const latestResults = allMerged
+    .filter((m) => !!m.result)
+    .sort(
+      (a, b) =>
+        new Date(b.kickoffUtc).getTime() - new Date(a.kickoffUtc).getTime(),
+    )
+    .slice(0, 4);
+
+  // Next-match hero source — pulled from the full schedule, not Supabase-only.
+  // "Next" = earliest match the team is in that has NOT been completed yet
+  // (no result recorded). This keeps the current in-progress match in the
+  // hero through kickoff and the full match window, only rolling over once
+  // a final score lands in wc2026-results.ts.
+  const nextCard =
+    allMerged
+      .filter(
+        (m) => m.homeCode === pickedCode || m.awayCode === pickedCode,
+      )
+      .filter((m) => !m.result)
+      .sort(
+        (a, b) =>
+          new Date(a.kickoffUtc).getTime() - new Date(b.kickoffUtc).getTime(),
+      )[0] ?? null;
 
   const group = findGroupForTeam(pickedCode);
-  const groupRows: StandingsRow[] = group
-    ? group.teams.map((code) => ({
-        countryCode: code,
-        name: getTeamByCode(code)?.name ?? code,
-        played: 0,
-        wins: 0,
-        draws: 0,
-        losses: 0,
-        goalDiff: 0,
-        points: 0,
-      }))
+  // Standings derive from the canonical full schedule (72 group matches),
+  // not Supabase — Supabase only has SF-scoped target-team fixtures so it
+  // misses matches like KOR–CZE that affect Group A's table.
+  const standings = group
+    ? computeStandings(group.teams, scheduleAsFixtures())
     : [];
+  const groupRows: StandingsRow[] = standings.map((s) => ({
+    countryCode: s.code,
+    name: getTeamByCode(s.code)?.name ?? s.code,
+    played: s.played,
+    wins: s.wins,
+    draws: s.draws,
+    losses: s.losses,
+    goalDiff: s.goalDiff,
+    points: s.points,
+  }));
 
   // Tier-bucket the bars: official supporter bars first, then everything else.
   const officialBars = bars.filter((b) => b.role === "home_bar");
@@ -173,7 +224,7 @@ export default async function HomePage() {
       isPublicSpot: !isFifa,    // ★ Public  for non-FIFA fan zones / watch parties
       isFifaOfficial: isFifa,   // ★ Official for the FIFA-sanctioned spot
       vibe: fz.atmosphere?.vibe ?? null,
-      photoUrl: fz.photo_url ?? null,
+      photoUrl: demoFanZonePhotoFor(fz.id, fz.photo_url ?? null),
     });
   }
   for (const b of bars) {
@@ -189,7 +240,7 @@ export default async function HomePage() {
       isOfficial: b.role === "home_bar",
       isPublicSpot: false,
       vibe: b.venue.atmosphere?.vibe ?? null,
-      photoUrl: b.venue.photo_url ?? null,
+      photoUrl: demoBarPhotoFor(b.venue.id, b.venue.photo_url ?? null),
     });
   }
   const hubVenues = Array.from(hubMap.values());
@@ -212,19 +263,26 @@ export default async function HomePage() {
       </section>
 
       {/* Hero */}
-      {next ? (
+      {nextCard ? (
         <MatchHero
           data={{
-            matchId: next.match_id,
-            homeCode: next.home_team,
-            awayCode: next.away_team,
-            stage: stageLabel(next.stage).toUpperCase(),
-            countdownText: kickoffCountdown(next),
-            kickoffLocal: formatKickoffLocal(next),
-            hostStadium: next.played_in_bay_area ? "Levi's Stadium" : null,
-            backgroundImages: teamHeroImages(pickedCode),
+            matchId: nextCard.matchId,
+            homeCode: nextCard.homeCode,
+            awayCode: nextCard.awayCode,
+            stage: nextCard.group ?? "",
+            countdownText: countdownFromIso(nextCard.kickoffUtc),
+            kickoffLocal: `${nextCard.dateLabel} · ${nextCard.timeLabel}`,
+            hostStadium: nextCard.isBayArea
+              ? "Levi's Stadium"
+              : nextCard.stadium,
+            backgroundImages: matchHeroImages(
+              pickedCode,
+              nextCard.homeCode === pickedCode
+                ? nextCard.awayCode
+                : nextCard.homeCode,
+            ),
             ctaLabel: "Where to watch →",
-            ctaHref: `/matches/${next.match_id}`,
+            ctaHref: `/matches/${nextCard.matchId}`,
             eyebrow: `${displayName.toUpperCase()}'S NEXT MATCH`,
           }}
         />
@@ -306,6 +364,65 @@ export default async function HomePage() {
         />
       ) : null}
 
+      {/* Latest results — most recent 4 completed matches */}
+      {latestResults.length ? (
+        <section id="results">
+          <SectionHeader title="Latest results" eyebrow="Just finished" />
+          <ul
+            role="list"
+            className="grid grid-cols-1 gap-gutter md:grid-cols-2 lg:grid-cols-4"
+          >
+            {latestResults.map((m) => {
+              const r = m.result!;
+              const homeWon = r.homeGoals > r.awayGoals;
+              const awayWon = r.awayGoals > r.homeGoals;
+              return (
+                <li key={m.matchId}>
+                  <Link
+                    href={`/matches/${m.matchId}`}
+                    className="group flex h-full flex-col gap-stack-md rounded-lg border border-outline-variant bg-surface-container-lowest p-stack-lg transition hover:-translate-y-[1px] hover:border-primary"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+                        {m.group} · {m.dateLabel}
+                      </span>
+                      <span className="rounded-full bg-success/20 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-success">
+                        FT
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span
+                        className={`inline-flex items-center gap-2 ${homeWon ? "text-on-surface" : "text-on-surface-variant"}`}
+                      >
+                        <span aria-hidden className="text-xl">
+                          {flagEmoji(m.homeCode) || "🏳️"}
+                        </span>
+                        <span className="font-semibold">{m.homeCode}</span>
+                      </span>
+                      <span className="text-2xl font-extrabold tabular-nums text-on-surface">
+                        {r.homeGoals}
+                        <span className="mx-1.5 font-light text-on-surface-variant">
+                          —
+                        </span>
+                        {r.awayGoals}
+                      </span>
+                      <span
+                        className={`inline-flex items-center gap-2 ${awayWon ? "text-on-surface" : "text-on-surface-variant"}`}
+                      >
+                        <span className="font-semibold">{m.awayCode}</span>
+                        <span aria-hidden className="text-xl">
+                          {flagEmoji(m.awayCode) || "🏳️"}
+                        </span>
+                      </span>
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
+
       {/* Upcoming — full WC2026 schedule, filterable */}
       {allUpcoming.length ? (
         <section id="schedule">
@@ -352,7 +469,7 @@ export default async function HomePage() {
                 name: b.venue.name,
                 neighborhood: b.venue.neighborhood,
                 address: b.venue.address,
-                photoUrl: b.venue.photo_url,
+                photoUrl: demoBarPhotoFor(b.venue.id, b.venue.photo_url),
                 isOfficial: true,
                 teamLabel: displayName.toUpperCase(),
                 walkingTime: null,
@@ -388,7 +505,7 @@ export default async function HomePage() {
                 name: b.venue.name,
                 neighborhood: b.venue.neighborhood,
                 address: b.venue.address,
-                photoUrl: b.venue.photo_url,
+                photoUrl: demoBarPhotoFor(b.venue.id, b.venue.photo_url),
                 isOfficial: false,
                 teamLabel: null,
                 walkingTime: null,

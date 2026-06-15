@@ -112,12 +112,21 @@ export default function ScheduleBrowser({ days }: { days: Day[] }) {
     return m;
   }, [days]);
 
-  // Default selection = first day with matches >= today, fallback to first day.
+  // Default selection — prefer the most recent day with at least one
+  // completed match so visitors land on the freshest results. Fall back to
+  // the next upcoming day if no results yet, then to the first day.
   const now = Date.now();
-  const upcomingIdx = days.findIndex(
-    (d) => new Date(d.iso).getTime() >= now,
-  );
-  const initial = days[upcomingIdx >= 0 ? upcomingIdx : 0]?.label ?? null;
+  const completedDays = days
+    .map((d, i) => ({ i, t: new Date(d.iso).getTime() }))
+    .filter((x) => days[x.i].matches.some((m) => !!m.result))
+    .sort((a, b) => b.t - a.t);
+  const upcomingDays = days
+    .map((d, i) => ({ i, t: new Date(d.iso).getTime() }))
+    .filter((x) => x.t > now)
+    .sort((a, b) => a.t - b.t);
+  const defaultIdx =
+    completedDays[0]?.i ?? upcomingDays[0]?.i ?? 0;
+  const initial = days[defaultIdx]?.label ?? null;
   const [active, setActive] = useState<string | null>(initial);
 
   const matchesRef = useRef<HTMLDivElement | null>(null);

@@ -62,6 +62,25 @@ export default function UpcomingMatchCard({
     }
   }
 
+  // Final-score view when the match is complete.
+  const isFinal = !!data.result;
+  const featureGoals = data.result
+    ? feature.isHome ? data.result.homeGoals : data.result.awayGoals
+    : null;
+  const opponentGoals = data.result
+    ? feature.isHome ? data.result.awayGoals : data.result.homeGoals
+    : null;
+  const outcome: "W" | "D" | "L" | null =
+    featureGoals == null || opponentGoals == null
+      ? null
+      : featureGoals > opponentGoals
+        ? "W"
+        : featureGoals < opponentGoals
+          ? "L"
+          : "D";
+  const outcomeColor =
+    outcome === "W" ? "#10B981" : outcome === "L" ? "#F43F5E" : "#F59E0B";
+
   return (
     <Link
       href={`/matches/${data.matchId}`}
@@ -102,7 +121,7 @@ export default function UpcomingMatchCard({
         className="absolute inset-0 bg-gradient-to-t from-[#00175F] via-[rgba(0,23,95,0.4)] to-transparent"
       />
 
-      {/* Top: group chip + bay-area chip */}
+      {/* Top: group chip + FT/Bay-area chip */}
       <div className="relative z-10 flex items-start justify-between p-4">
         {data.group ? (
           <span className="rounded-full border border-white/30 bg-white/15 px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-white shadow-sm backdrop-blur-md">
@@ -111,11 +130,21 @@ export default function UpcomingMatchCard({
         ) : (
           <span />
         )}
-        {data.isBayArea ? (
-          <span className="rounded-full border border-white/30 bg-white/15 px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-white shadow-sm backdrop-blur-md">
-            Bay Area
-          </span>
-        ) : null}
+        <div className="flex flex-col items-end gap-1">
+          {isFinal ? (
+            <span
+              className="rounded-full px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-sm"
+              style={{ backgroundColor: outcomeColor }}
+            >
+              FT · {outcome}
+            </span>
+          ) : null}
+          {data.isBayArea ? (
+            <span className="rounded-full border border-white/30 bg-white/15 px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-white shadow-sm backdrop-blur-md">
+              Bay Area
+            </span>
+          ) : null}
+        </div>
       </div>
 
       {/* Hero team — large flag + name, sits above the meta panel */}
@@ -139,12 +168,35 @@ export default function UpcomingMatchCard({
       </div>
 
       {/* Glassmorphism meta panel — strong blur + extra opacity so the
-          white type reads cleanly over any image. */}
+          white type reads cleanly over any image. Renders the final score
+          for completed matches; date/time for upcoming. */}
       <div className="relative z-10 m-3 rounded-lg border border-white/20 bg-white/15 p-4 backdrop-blur-md shadow-lg">
-        <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.12em] text-white">
-          <span>{data.dateLabel}</span>
-          {data.timeLabel ? <span>{data.timeLabel}</span> : <span className="text-white/55">TBD</span>}
-        </div>
+        {isFinal ? (
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em] text-white/80">
+              <span aria-hidden>
+                {flagEmoji(data.homeCode) || "🏳️"}
+              </span>
+              <span>{data.homeCode}</span>
+            </div>
+            <p className="text-3xl font-extrabold tabular-nums leading-none text-white">
+              {data.result!.homeGoals}
+              <span className="mx-2 font-light text-white/60">—</span>
+              {data.result!.awayGoals}
+            </p>
+            <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em] text-white/80">
+              <span>{data.awayCode}</span>
+              <span aria-hidden>
+                {flagEmoji(data.awayCode) || "🏳️"}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.12em] text-white">
+            <span>{data.dateLabel}</span>
+            {data.timeLabel ? <span>{data.timeLabel}</span> : <span className="text-white/55">TBD</span>}
+          </div>
+        )}
 
         <div className="mt-2 flex items-center justify-between text-[12px] text-white/90">
           <span className="truncate font-sans font-medium">{data.stadium}</span>

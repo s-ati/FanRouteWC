@@ -14,6 +14,7 @@ import { stageLabel } from "./matchday";
 import { getStadiumById } from "./wc2026-stadiums";
 import { getTeamByCode } from "./wc2026-teams";
 import type { MatchCardData } from "./wc2026-matches";
+import { getResultByMatchId } from "./wc2026-results";
 
 export type ScheduleStage =
   | "group-a" | "group-b" | "group-c" | "group-d"
@@ -33,6 +34,13 @@ export type ScheduleEntry = {
 };
 
 const PLACEHOLDER_TIME = "T19:00:00Z";
+
+// Per-match kickoff time overrides (UTC), keyed by matchId. Add an entry as
+// each match's real kickoff is confirmed; everything else stays on the
+// PLACEHOLDER_TIME above. Format: `T<HH>:<MM>:00Z`.
+const KICKOFF_TIME_OVERRIDES: Record<string, string> = {
+  M14: "T22:00:00Z", // KSA v URU — 3:00 PM PT
+};
 
 const g = (n: number, stage: ScheduleStage, home: string, away: string, date: string, stadium: string): ScheduleEntry => ({
   matchId: `M${n}`,
@@ -247,16 +255,26 @@ export function scheduleEntryToMatchCardData(
   const stadium = getStadiumById(e.stadiumId);
   const imagery = stadiumImageryById(e.stadiumId);
 
-  const date = new Date(`${e.dateIso}${PLACEHOLDER_TIME}`);
+  const timeSuffix = KICKOFF_TIME_OVERRIDES[e.matchId] ?? PLACEHOLDER_TIME;
+  const hasRealTime = timeSuffix !== PLACEHOLDER_TIME;
+  const date = new Date(`${e.dateIso}${timeSuffix}`);
   const dateLabel = date.toLocaleDateString("en-US", {
     weekday: "short",
     month: "short",
     day: "numeric",
     timeZone: "America/Los_Angeles",
   });
-  // Date-anchored only (time TBD) — leave timeLabel blank so the card hides it.
-  const timeLabel = "";
+  // Show a kickoff time only when we've overridden the placeholder; otherwise
+  // leave blank so the card hides it (date-anchored display).
+  const timeLabel = hasRealTime
+    ? `${date.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone: "America/Los_Angeles",
+      })} PT`
+    : "";
 
+  const r = getResultByMatchId(e.matchId);
   return {
     matchId: e.matchId,
     group: stageLabel(e.stage).toUpperCase(),
@@ -269,6 +287,7 @@ export function scheduleEntryToMatchCardData(
     city: stadium?.city ?? imagery.city,
     isBayArea: stadium?.isBayArea ?? false,
     backgroundUrl: imagery.imageUrl,
+    result: r ? { homeGoals: r.homeGoals, awayGoals: r.awayGoals } : null,
   };
 }
 
@@ -281,6 +300,28 @@ export function entryDisplayNames(e: ScheduleEntry): {
     homeName: labelFor(e.homeCode, e.homeLabel),
     awayName: labelFor(e.awayCode, e.awayLabel),
   };
+}
+
+// Derive a synthetic Fixture[] from the static schedule so non-Supabase
+// callers (e.g. standings derivation) can feed the regular Fixture shape
+// into helpers like computeStandings(). Only group-stage entries are
+// emitted — knockout placeholders don't have real team codes yet.
+export function scheduleAsFixtures(): import("./types").Fixture[] {
+  return WC2026_SCHEDULE.filter((e) => e.stage.startsWith("group-")).map(
+    (e) => ({
+      match_id: e.matchId,
+      city_id: "wc-2026",
+      stage: e.stage,
+      home_team: e.homeCode,
+      away_team: e.awayCode,
+      kickoff_local: `${e.dateIso}T19:00:00Z`,
+      kickoff_utc: `${e.dateIso}T19:00:00Z`,
+      played_in_bay_area: false,
+      host_city: e.stadiumId,
+      notes: null,
+      last_verified: "2026-06-15",
+    }),
+  );
 }
 
 // Convenience: full schedule pre-converted to card data, sorted ascending.
