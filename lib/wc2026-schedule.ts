@@ -35,12 +35,36 @@ export type ScheduleEntry = {
 
 const PLACEHOLDER_TIME = "T19:00:00Z";
 
-// Per-match kickoff time overrides (UTC), keyed by matchId. Add an entry as
-// each match's real kickoff is confirmed; everything else stays on the
-// PLACEHOLDER_TIME above. Format: `T<HH>:<MM>:00Z`.
+// Per-match real kickoff instants (full UTC ISO), keyed by matchId. Stored as
+// complete instants (not just a time) because many matches kick off in the
+// evening at negative UTC offsets and therefore land on the *next* UTC day
+// relative to their local schedule date. Anything without an entry falls back
+// to `${dateIso}${PLACEHOLDER_TIME}`. Source: en.wikipedia.org/wiki/2026_FIFA_World_Cup.
 const KICKOFF_TIME_OVERRIDES: Record<string, string> = {
-  M14: "T22:00:00Z", // KSA v URU — 3:00 PM PT
+  M14: "2026-06-15T22:00:00Z", // KSA v URU — 3:00 PM PT
+  // Round of 32 (Matches 73–88) — confirmed kickoff instants.
+  M73: "2026-06-28T19:00:00Z",
+  M74: "2026-06-29T20:30:00Z",
+  M75: "2026-06-30T01:00:00Z",
+  M76: "2026-06-29T17:00:00Z",
+  M77: "2026-06-30T21:00:00Z",
+  M78: "2026-06-30T17:00:00Z",
+  M79: "2026-07-01T01:00:00Z",
+  M80: "2026-07-01T16:00:00Z",
+  M81: "2026-07-02T00:00:00Z",
+  M82: "2026-07-01T20:00:00Z",
+  M83: "2026-07-02T23:00:00Z",
+  M84: "2026-07-02T19:00:00Z",
+  M85: "2026-07-03T03:00:00Z",
+  M86: "2026-07-03T22:00:00Z",
+  M87: "2026-07-04T01:30:00Z",
+  M88: "2026-07-03T18:00:00Z",
 };
+
+// Real kickoff instant for an entry, or the date-anchored placeholder.
+function kickoffIsoFor(e: ScheduleEntry): string {
+  return KICKOFF_TIME_OVERRIDES[e.matchId] ?? `${e.dateIso}${PLACEHOLDER_TIME}`;
+}
 
 const g = (n: number, stage: ScheduleStage, home: string, away: string, date: string, stadium: string): ScheduleEntry => ({
   matchId: `M${n}`,
@@ -198,22 +222,25 @@ export const WC2026_SCHEDULE: ScheduleEntry[] = [
   g( 72, "group-l", "COD", "UZB", "2026-06-27", "mb-atlanta"),
 
   // ── Knockout — Round of 32 (16 matches, 73–88) ──────────────────────────
-  k( 73, "r32", "2A", "Group A runner-up", "2B", "Group B runner-up", "2026-06-28", "sofi-la"),
-  k( 74, "r32", "1E", "Group E winner",     "T3", "3rd-place team",   "2026-06-29", "gillette-boston"),
-  k( 75, "r32", "1F", "Group F winner",     "2C", "Group C runner-up","2026-06-29", "bbva-monterrey"),
-  k( 76, "r32", "1C", "Group C winner",     "2F", "Group F runner-up","2026-06-29", "nrg-houston"),
-  k( 77, "r32", "1I", "Group I winner",     "T3", "3rd-place team",   "2026-06-30", "metlife-nynj"),
-  k( 78, "r32", "2E", "Group E runner-up",  "2I", "Group I runner-up","2026-06-30", "lincoln-philly"),
-  k( 79, "r32", "1A", "Group A winner",     "T3", "3rd-place team",   "2026-06-30", "azteca-mexicocity"),
-  k( 80, "r32", "1L", "Group L winner",     "T3", "3rd-place team",   "2026-07-01", "mb-atlanta"),
-  k( 81, "r32", "1D", "Group D winner",     "T3", "3rd-place team",   "2026-07-01", "levis-bay-area"),
-  k( 82, "r32", "1G", "Group G winner",     "T3", "3rd-place team",   "2026-07-01", "lumen-seattle"),
-  k( 83, "r32", "2K", "Group K runner-up",  "2L", "Group L runner-up","2026-07-02", "bmofield-toronto"),
-  k( 84, "r32", "1H", "Group H winner",     "2J", "Group J runner-up","2026-07-02", "sofi-la"),
-  k( 85, "r32", "1B", "Group B winner",     "T3", "3rd-place team",   "2026-07-02", "bcplace-vancouver"),
-  k( 86, "r32", "1J", "Group J winner",     "2H", "Group H runner-up","2026-07-03", "hardrock-miami"),
-  k( 87, "r32", "1K", "Group K winner",     "T3", "3rd-place team",   "2026-07-03", "arrowhead-kc"),
-  k( 88, "r32", "2D", "Group D runner-up",  "2G", "Group G runner-up","2026-07-03", "att-dallas"),
+  // Qualified teams resolved after the group stage completed (2026-06-27).
+  // Pairings + match numbers from en.wikipedia.org/wiki/2026_FIFA_World_Cup.
+  // Home/away order follows the Wikipedia round-of-32 listing.
+  g( 73, "r32", "RSA", "CAN", "2026-06-28", "sofi-la"),         // 2A v 2B
+  g( 74, "r32", "GER", "PAR", "2026-06-29", "gillette-boston"), // 1E v 3rd
+  g( 75, "r32", "NED", "MAR", "2026-06-29", "bbva-monterrey"),  // 1F(real) v 2C
+  g( 76, "r32", "BRA", "JPN", "2026-06-29", "nrg-houston"),     // 1C v 2H(real)
+  g( 77, "r32", "FRA", "SWE", "2026-06-30", "metlife-nynj"),    // 1I v 2F(real)
+  g( 78, "r32", "CIV", "NOR", "2026-06-30", "lincoln-philly"),  // 2E v 2I
+  g( 79, "r32", "MEX", "ECU", "2026-06-30", "azteca-mexicocity"), // 1A v 3rd
+  g( 80, "r32", "ENG", "COD", "2026-07-01", "mb-atlanta"),      // 1L(real) v 3rd
+  g( 81, "r32", "USA", "BIH", "2026-07-01", "levis-bay-area"),  // 1D v 3rd
+  g( 82, "r32", "BEL", "SEN", "2026-07-01", "lumen-seattle"),   // 1G v 3rd
+  g( 83, "r32", "POR", "CRO", "2026-07-02", "bmofield-toronto"), // 1K(real) v 2L(real)
+  g( 84, "r32", "ESP", "AUT", "2026-07-02", "sofi-la"),         // 1H(real) v 2J
+  g( 85, "r32", "SUI", "ALG", "2026-07-02", "bcplace-vancouver"), // 1B v 3rd
+  g( 86, "r32", "ARG", "CPV", "2026-07-03", "hardrock-miami"),  // 1J v 3rd
+  g( 87, "r32", "COL", "GHA", "2026-07-03", "arrowhead-kc"),    // 1K v 3rd
+  g( 88, "r32", "AUS", "EGY", "2026-07-03", "att-dallas"),      // 2D v 2G
 
   // ── Round of 16 (8 matches, 89–96) ───────────────────────────────────────
   k( 89, "r16", "W74", "Winner Match 74", "W77", "Winner Match 77", "2026-07-04", "lincoln-philly"),
@@ -255,9 +282,8 @@ export function scheduleEntryToMatchCardData(
   const stadium = getStadiumById(e.stadiumId);
   const imagery = stadiumImageryById(e.stadiumId);
 
-  const timeSuffix = KICKOFF_TIME_OVERRIDES[e.matchId] ?? PLACEHOLDER_TIME;
-  const hasRealTime = timeSuffix !== PLACEHOLDER_TIME;
-  const date = new Date(`${e.dateIso}${timeSuffix}`);
+  const hasRealTime = e.matchId in KICKOFF_TIME_OVERRIDES;
+  const date = new Date(kickoffIsoFor(e));
   const dateLabel = date.toLocaleDateString("en-US", {
     weekday: "short",
     month: "short",
@@ -322,6 +348,32 @@ export function scheduleAsFixtures(): import("./types").Fixture[] {
       last_verified: "2026-06-15",
     }),
   );
+}
+
+// Synthesize a single Fixture from the static schedule for any matchId —
+// group OR knockout. Lets pages (e.g. /matches/[id]) fall back to the schedule
+// when a fixture isn't seeded in Supabase, instead of 404ing. Returns null if
+// the matchId isn't in the schedule at all.
+export function scheduleFixtureById(
+  matchId: string,
+): import("./types").Fixture | null {
+  const e = WC2026_SCHEDULE.find((x) => x.matchId === matchId);
+  if (!e) return null;
+  const stadium = getStadiumById(e.stadiumId);
+  const iso = kickoffIsoFor(e);
+  return {
+    match_id: e.matchId,
+    city_id: "wc-2026",
+    stage: e.stage,
+    home_team: e.homeCode,
+    away_team: e.awayCode,
+    kickoff_local: iso,
+    kickoff_utc: iso,
+    played_in_bay_area: stadium?.isBayArea ?? false,
+    host_city: e.stadiumId,
+    notes: null,
+    last_verified: "2026-06-28",
+  };
 }
 
 // Convenience: full schedule pre-converted to card data, sorted ascending.

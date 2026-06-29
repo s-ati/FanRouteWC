@@ -1,7 +1,8 @@
 import Link from "next/link";
 import StandingsTable, { type StandingsRow } from "@/components/StandingsTable";
 import { readPickedCountry } from "@/lib/country-cookie";
-import { getAllGroups } from "@/lib/wc2026-schedule";
+import { getAllGroups, scheduleAsFixtures } from "@/lib/wc2026-schedule";
+import { computeStandings } from "@/lib/groups";
 import { getTeamByCode } from "@/lib/wc2026-teams";
 
 export const revalidate = 60;
@@ -9,6 +10,7 @@ export const revalidate = 60;
 export default async function StandingsPage() {
   const pickedCode = await readPickedCountry();
   const groups = getAllGroups();
+  const groupFixtures = scheduleAsFixtures();
 
   return (
     <main className="mx-auto max-w-7xl space-y-section-gap px-container-padding py-section-gap">
@@ -28,22 +30,25 @@ export default async function StandingsPage() {
         </h1>
         <p className="mt-stack-md max-w-2xl text-body-main text-on-surface-variant">
           Twelve groups of four. The top two from each plus the eight best
-          third-place finishers advance to the Round of 32. Standings populate
-          once the group stage begins.
+          third-place finishers advance to the Round of 32. The group stage is
+          complete — final standings below.
         </p>
       </header>
 
       <ul role="list" className="grid grid-cols-1 gap-gutter md:grid-cols-2">
         {groups.map((g) => {
-          const rows: StandingsRow[] = g.teams.map((c) => ({
-            countryCode: c,
-            name: getTeamByCode(c)?.name ?? c,
-            played: 0,
-            wins: 0,
-            draws: 0,
-            losses: 0,
-            goalDiff: 0,
-            points: 0,
+          const rows: StandingsRow[] = computeStandings(
+            g.teams,
+            groupFixtures,
+          ).map((s) => ({
+            countryCode: s.code,
+            name: getTeamByCode(s.code)?.name ?? s.code,
+            played: s.played,
+            wins: s.wins,
+            draws: s.draws,
+            losses: s.losses,
+            goalDiff: s.goalDiff,
+            points: s.points,
           }));
           return (
             <li key={g.letter}>

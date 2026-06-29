@@ -4,8 +4,11 @@ import { redirect } from "next/navigation";
 import TeamPicker from "@/components/TeamPicker";
 import { COUNTRY_COOKIE, readPickedCountry } from "@/lib/country-cookie";
 import { flagEmoji } from "@/lib/flags";
+import { getCurrentUser } from "@/lib/supabase/auth-server";
 
-export const revalidate = 60;
+// Onboarding is the second step of the new flow: sign in with a magic link
+// first, then pick your team. No session → bounce to /login and come back here.
+export const revalidate = 0;
 
 async function pickCountryAction(formData: FormData) {
   "use server";
@@ -23,6 +26,9 @@ async function pickCountryAction(formData: FormData) {
 }
 
 export default async function OnboardingPage() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login?next=/onboarding");
+
   const picked = await readPickedCountry();
 
   return (

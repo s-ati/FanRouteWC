@@ -70,7 +70,7 @@ export default async function SiteHeader() {
             </Link>
           ) : (
             <Link
-              href="/onboarding"
+              href={user ? "/onboarding" : "/login?next=/onboarding"}
               className="hidden items-center rounded-md bg-primary px-4 py-2 text-body-sm font-semibold text-on-primary transition hover:bg-primary-container md:inline-flex"
             >
               Pick your team

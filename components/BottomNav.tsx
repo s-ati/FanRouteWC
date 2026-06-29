@@ -4,7 +4,7 @@ import Link from "next/link";
 // land in a later phase when there's actually content behind them.
 const TABS = [
   { label: "Home", href: "/", icon: "home" },
-  { label: "Live", href: "/#live", icon: "sensors" },
+  { label: "Live", href: "/schedule", icon: "sensors" },
 ];
 
 export default function BottomNav() {

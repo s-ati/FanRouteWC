@@ -11,6 +11,7 @@ import UpcomingMatchCard from "@/components/UpcomingMatchCard";
 import { fixtureToMatchData } from "@/lib/wc2026-matches";
 import VenueMapLazy from "@/components/VenueMapLazy";
 import { readPickedCountry } from "@/lib/country-cookie";
+import { venuePhoto } from "@/lib/bar-photos";
 import { calculateCrowdConfidence } from "@/lib/crowd/calculate";
 import { occupancyVerdict } from "@/lib/crowd/occupancy-copy";
 import { flagEmoji } from "@/lib/flags";
@@ -114,19 +115,23 @@ export default async function VenuePage({ params }: Params) {
       </Link>
 
       {/* Hero photo */}
-      {venue.photo_url ? (
-        <div className="overflow-hidden rounded-xl border border-outline-variant">
-          <Image
-            src={venue.photo_url}
-            alt={venue.name}
-            width={1600}
-            height={800}
-            sizes="(max-width: 768px) 100vw, 1280px"
-            className="h-64 w-full object-cover md:h-96"
-            priority
-          />
-        </div>
-      ) : null}
+      {(() => {
+        const heroPhoto = venuePhoto(venue.id, venue.photo_url);
+        return heroPhoto ? (
+          <div className="overflow-hidden rounded-xl border border-outline-variant">
+            <Image
+              src={heroPhoto}
+              alt={venue.name}
+              width={1600}
+              height={800}
+              sizes="(max-width: 768px) 100vw, 1280px"
+              className="h-64 w-full object-cover md:h-96"
+              priority
+              unoptimized={heroPhoto.includes("googleusercontent.com")}
+            />
+          </div>
+        ) : null;
+      })()}
 
       {/* Title block */}
       <header>
@@ -304,7 +309,7 @@ export default async function VenuePage({ params }: Params) {
                 name: b.venue.name,
                 neighborhood: b.venue.neighborhood,
                 address: b.venue.address,
-                photoUrl: b.venue.photo_url,
+                photoUrl: venuePhoto(b.venue.id, b.venue.photo_url),
                 isOfficial: b.role === "home_bar",
                 teamLabel: pickedDisplayName?.toUpperCase() ?? null,
                 walkingTime: null,

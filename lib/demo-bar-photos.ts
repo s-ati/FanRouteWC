@@ -1,7 +1,11 @@
-// Hand-picked Unsplash bar/pub photos used as a demo stand-in for any venue
-// whose `photo_url` is missing or points to an expired Google Places signed
-// URL. Each venue id deterministically maps to one photo so the same bar
-// shows the same image across renders.
+// Resolves a usable photo for a venue. Order of preference:
+//   1. The real Google Maps photo we downloaded + self-hosted (lib/bar-photos)
+//   2. The row's own photo_url, if it isn't a known-broken Google signed URL
+//   3. A hand-picked Unsplash stand-in (last resort, so a card is never blank)
+// Each venue id deterministically maps to one Unsplash photo so the same bar
+// shows the same fallback across renders.
+
+import { realBarPhoto } from "./bar-photos";
 
 const DEMO_BAR_PHOTOS = [
   "https://images.unsplash.com/photo-1572116469696-31de0f17cc34?auto=format&fit=crop&w=900&q=75",
@@ -40,6 +44,8 @@ export function demoBarPhotoFor(
   id: string,
   existing?: string | null,
 ): string {
+  const real = realBarPhoto(id);
+  if (real) return real;
   if (existing && !isLikelyBroken(existing)) return existing;
   return DEMO_BAR_PHOTOS[stableIndex(id, DEMO_BAR_PHOTOS.length)];
 }
@@ -48,6 +54,8 @@ export function demoFanZonePhotoFor(
   id: string,
   existing?: string | null,
 ): string {
+  const real = realBarPhoto(id);
+  if (real) return real;
   if (existing && !isLikelyBroken(existing)) return existing;
   return DEMO_FAN_ZONE_PHOTOS[stableIndex(id, DEMO_FAN_ZONE_PHOTOS.length)];
 }

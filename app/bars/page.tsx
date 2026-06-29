@@ -4,6 +4,7 @@ import Chip from "@/components/Chip";
 import SectionHeader from "@/components/SectionHeader";
 import { flagEmoji } from "@/lib/flags";
 import { getAllVenues } from "@/lib/queries";
+import { realBarPhoto } from "@/lib/bar-photos";
 
 export const revalidate = 60;
 
@@ -65,6 +66,15 @@ export default async function BarsIndexPage() {
               const primaryAffinity = v.country_affiliations?.find(
                 (c) => c && c !== "*",
               );
+              // Prefer the self-hosted real Google photo; fall back to the
+              // row's URL only if it isn't a known-broken Google signed URL.
+              const photo =
+                realBarPhoto(v.id) ??
+                (v.photo_url &&
+                !v.photo_url.includes("googleusercontent.com/gps-cs-s") &&
+                !v.photo_url.includes("googleusercontent.com/places")
+                  ? v.photo_url
+                  : null);
               return (
                 <li key={v.id}>
                   <Link
@@ -72,15 +82,15 @@ export default async function BarsIndexPage() {
                     className="group flex h-full flex-col overflow-hidden rounded-lg border border-outline-variant bg-surface-container-lowest transition hover:-translate-y-[1px] hover:border-primary hover:shadow-ambient"
                   >
                     <div className="relative h-44 w-full overflow-hidden bg-surface-container">
-                      {v.photo_url ? (
+                      {photo ? (
                         <Image
-                          src={v.photo_url}
+                          src={photo}
                           alt={v.name}
                           width={800}
                           height={520}
                           sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                           className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
-                          unoptimized={v.photo_url.includes("googleusercontent.com")}
+                          unoptimized={photo.includes("googleusercontent.com")}
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-5xl">
@@ -108,7 +118,7 @@ export default async function BarsIndexPage() {
                         ) : null}
                       </div>
 
-                      {v.address ? (
+                      {v.address && !v.address.startsWith("TBD") ? (
                         <p className="text-body-sm text-on-surface-variant">
                           {v.address}
                         </p>

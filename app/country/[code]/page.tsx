@@ -12,11 +12,6 @@ import { COUNTRY_COOKIE, readPickedCountry } from "@/lib/country-cookie";
 import { occupancyVerdict } from "@/lib/crowd/occupancy-copy";
 import { flagEmoji } from "@/lib/flags";
 import {
-  formatKickoffLocal,
-  kickoffCountdown,
-  stageLabel,
-} from "@/lib/matchday";
-import {
   getAllFixtures,
   getCountryByCode,
   getFanZonesByIds,
@@ -86,7 +81,10 @@ export default async function CountryDetailPage({
 
   const team = getTeamByCode(upperCode);
   const country = await getCountryByCode(upperCode);
-  if (!team && !country) notFound();
+  // Only the 48 qualified WC2026 teams get a country page. Some stale rows
+  // (IRL, ITA, NGA — removed from the team list when they didn't qualify) may
+  // still exist in Supabase; don't surface them.
+  if (!team) notFound();
 
   const displayName = country?.name ?? team?.name ?? upperCode;
   const fanZoneIds = country?.fan_zones?.length
@@ -113,10 +111,36 @@ export default async function CountryDetailPage({
   // Full WC2026 tournament — 104 matches from the static schedule,
   // overlaid with Supabase kickoff times where available. Pre-filtered to
   // this country via MatchesGrid's defaultTeamFilter prop.
-  const allUpcoming = mergeFixturesIntoSchedule(
+  const allMerged = mergeFixturesIntoSchedule(
     getScheduleAsMatchCards(),
     allFixtures,
-  ).filter((m) => new Date(m.kickoffUtc).getTime() >= Date.now());
+  );
+  const allUpcoming = allMerged.filter(
+    (m) => new Date(m.kickoffUtc).getTime() >= Date.now(),
+  );
+
+  // Hero next-match comes from the FULL schedule, not just SF-seeded fixtures,
+  // so every team still alive (e.g. USA in the Round of 32) shows its next
+  // game. "Next" = earliest match for this team that has no final score yet.
+  const nextCard =
+    allMerged
+      .filter((m) => m.homeCode === upperCode || m.awayCode === upperCode)
+      .filter((m) => !m.result)
+      .sort(
+        (a, b) =>
+          new Date(a.kickoffUtc).getTime() - new Date(b.kickoffUtc).getTime(),
+      )[0] ?? null;
+  const nextCardCountdown = nextCard
+    ? (() => {
+        const ms = new Date(nextCard.kickoffUtc).getTime() - Date.now();
+        if (ms <= 0) return "Kicked off";
+        const mins = Math.floor(ms / 60000);
+        if (mins < 60) return `in ${mins}m`;
+        const hours = Math.floor(mins / 60);
+        if (hours < 48) return `in ${hours}h`;
+        return `in ${Math.floor(hours / 24)}d`;
+      })()
+    : "";
 
   const group = findGroupForTeam(upperCode);
   const standings = group
@@ -181,20 +205,25 @@ export default async function CountryDetailPage({
         </div>
       </section>
 
-      {/* Hero — next match (or identity fallback when no SF fixture) */}
-      {next ? (
+      {/* Hero — next match from the full schedule (or identity fallback when
+          the team has been eliminated and has no upcoming game). */}
+      {nextCard ? (
         <MatchHero
           data={{
-            matchId: next.match_id,
-            homeCode: next.home_team,
-            awayCode: next.away_team,
-            stage: stageLabel(next.stage).toUpperCase(),
-            countdownText: kickoffCountdown(next),
-            kickoffLocal: formatKickoffLocal(next),
-            hostStadium: next.played_in_bay_area ? "Levi's Stadium" : null,
+            matchId: nextCard.matchId,
+            homeCode: nextCard.homeCode,
+            awayCode: nextCard.awayCode,
+            stage: nextCard.group,
+            countdownText: nextCardCountdown,
+            kickoffLocal: nextCard.timeLabel
+              ? `${nextCard.dateLabel} · ${nextCard.timeLabel}`
+              : nextCard.dateLabel,
+            hostStadium: nextCard.isBayArea
+              ? "Levi's Stadium"
+              : (nextCard.stadium ?? null),
             backgroundImages: teamHeroImages(upperCode),
             ctaLabel: "Where to watch →",
-            ctaHref: `/matches/${next.match_id}`,
+            ctaHref: `/matches/${nextCard.matchId}`,
             eyebrow: `${displayName.toUpperCase()}'S NEXT MATCH`,
           }}
         />
@@ -205,7 +234,7 @@ export default async function CountryDetailPage({
             displayName,
             eyebrow: displayName.toUpperCase(),
             tagline:
-              "No San Francisco fixture for this team yet — we'll surface every match the moment the Bay Area schedule confirms it.",
+              "This team's tournament is over — no upcoming match. Browse the full schedule for the rest of the bracket.",
             backgroundImages: teamHeroImages(upperCode),
             ctaLabel: "Browse the schedule",
             ctaHref: "/#schedule",

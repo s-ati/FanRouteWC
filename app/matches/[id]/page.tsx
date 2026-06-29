@@ -8,6 +8,7 @@ import VenueMapLazy from "@/components/VenueMapLazy";
 import { calculateCrowdConfidence as _ccc, enrichRankedWithRealCrowd } from "@/lib/crowd/calculate";
 import { readPickedCountry } from "@/lib/country-cookie";
 import { flagEmoji } from "@/lib/flags";
+import { venuePhoto } from "@/lib/bar-photos";
 import {
   formatKickoffLocal,
   kickoffCountdown,
@@ -22,6 +23,7 @@ import {
   getRankedBarsForCountry,
 } from "@/lib/queries";
 import { getTeamByCode } from "@/lib/wc2026-teams";
+import { scheduleFixtureById } from "@/lib/wc2026-schedule";
 
 void _ccc;
 
@@ -39,12 +41,16 @@ type Bucket = {
 
 export default async function MatchPage({ params }: Params) {
   const { id } = await params;
-  const [fixture, venues, pickedCode] = await Promise.all([
+  const [fixtureRow, venues, pickedCode] = await Promise.all([
     getFixtureById(id),
     getAllVenues(),
     readPickedCountry(),
   ]);
 
+  // Fall back to the static schedule for matches not seeded in Supabase
+  // (e.g. non-Bay-Area knockout fixtures), so every scheduled match has a
+  // page instead of 404ing.
+  const fixture = fixtureRow ?? scheduleFixtureById(id);
   if (!fixture) notFound();
 
   const baseRanked = rankVenuesForFixture(venues, fixture);
@@ -252,6 +258,7 @@ export default async function MatchPage({ params }: Params) {
 
 function RankedRow({ rank, item }: { rank: number; item: RankedVenue }) {
   const v = item.venue;
+  const photo = venuePhoto(v.id, v.photo_url);
   const color = colorFromConfidence(item.crowd);
   const occupancyLabel =
     item.crowd === "open"
@@ -274,14 +281,15 @@ function RankedRow({ rank, item }: { rank: number; item: RankedVenue }) {
         <div className="absolute left-stack-md top-stack-md z-10 flex h-9 w-9 items-center justify-center rounded-md bg-on-surface text-body-sm font-bold text-background">
           {String(rank).padStart(2, "0")}
         </div>
-        {v.photo_url ? (
+        {photo ? (
           <Image
-            src={v.photo_url}
+            src={photo}
             alt={v.name}
             width={600}
             height={400}
             sizes="(max-width: 768px) 100vw, 288px"
             className="h-44 w-full object-cover md:h-full"
+            unoptimized={photo.includes("googleusercontent.com")}
           />
         ) : (
           <div className="flex h-44 items-center justify-center text-5xl text-on-surface-variant md:h-full">

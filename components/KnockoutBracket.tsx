@@ -1,60 +1,90 @@
-// Two-sided knockout tree for the 2026 FIFA World Cup.
+// Two-sided knockout tree for the 2026 FIFA World Cup, derived entirely from
+// WC2026_SCHEDULE so it stays in sync with the real fixtures.
 // 48 teams → top 2 of 12 groups (24) + 8 best third-place → Round of 32.
 // Below the R32 entry strip, the tree is a classic two-sided bracket with the
 // Final centered: R16 · QF · SF · Final · SF · QF · R16.
+//
+// Every slot is labelled with its exact FIFA match number (Match 73–104) and
+// the real wiring (Winner Match 74 → Match 89, etc.). R32 slots already show
+// the qualified teams; R16+ slots show "W<n>" (winner of match n) until those
+// feeder games are played and recorded.
 
-type Slot = { id: string; top: string; bottom: string };
+import {
+  WC2026_SCHEDULE,
+  entryDisplayNames,
+  type ScheduleEntry,
+} from "@/lib/wc2026-schedule";
+import { getStadiumById } from "@/lib/wc2026-stadiums";
+import { getTeamByCode } from "@/lib/wc2026-teams";
+import { flagEmoji } from "@/lib/flags";
 
-// Round of 32: 16 matches. Slot labels follow the 2026 bracket convention where
-// group winners meet 3rd-place finishers and runners-up meet other runners-up
-// or 3rd-place finishers, balanced across the two halves of the draw.
-const R32: Slot[] = [
-  { id: "r32-1", top: "1A", bottom: "3C/D/E/F" },
-  { id: "r32-2", top: "1C", bottom: "3A/B/F" },
-  { id: "r32-3", top: "1F", bottom: "3A/B/C" },
-  { id: "r32-4", top: "1B", bottom: "3E/F/G/I" },
-  { id: "r32-5", top: "1E", bottom: "3A/D/E/F" },
-  { id: "r32-6", top: "1D", bottom: "2F" },
-  { id: "r32-7", top: "2A", bottom: "2C" },
-  { id: "r32-8", top: "2E", bottom: "2B" },
-  { id: "r32-9", top: "1G", bottom: "3A/E/H/I/J" },
-  { id: "r32-10", top: "1I", bottom: "3C/D/F/G/H" },
-  { id: "r32-11", top: "1L", bottom: "3B/E/F/G/H" },
-  { id: "r32-12", top: "1H", bottom: "3A/D/F/G/I/J" },
-  { id: "r32-13", top: "1K", bottom: "3B/E/H/I/J" },
-  { id: "r32-14", top: "1J", bottom: "2L" },
-  { id: "r32-15", top: "2I", bottom: "2G" },
-  { id: "r32-16", top: "2K", bottom: "2H" },
-];
+const BY_ID = new Map<string, ScheduleEntry>(
+  WC2026_SCHEDULE.map((e) => [e.matchId, e]),
+);
 
-// R16: left half feeds SF·1, right half feeds SF·2.
-const R16_LEFT: Slot[] = [
-  { id: "r16-1", top: "W R32·1", bottom: "W R32·2" },
-  { id: "r16-2", top: "W R32·3", bottom: "W R32·4" },
-  { id: "r16-3", top: "W R32·5", bottom: "W R32·6" },
-  { id: "r16-4", top: "W R32·7", bottom: "W R32·8" },
-];
-const R16_RIGHT: Slot[] = [
-  { id: "r16-5", top: "W R32·9", bottom: "W R32·10" },
-  { id: "r16-6", top: "W R32·11", bottom: "W R32·12" },
-  { id: "r16-7", top: "W R32·13", bottom: "W R32·14" },
-  { id: "r16-8", top: "W R32·15", bottom: "W R32·16" },
-];
+type Slot = {
+  matchId: string;
+  num: number;
+  top: string;
+  bottom: string;
+  topFull: string;
+  bottomFull: string;
+};
 
-const QF_LEFT: Slot[] = [
-  { id: "qf-1", top: "W R16·1", bottom: "W R16·2" },
-  { id: "qf-2", top: "W R16·3", bottom: "W R16·4" },
-];
-const QF_RIGHT: Slot[] = [
-  { id: "qf-3", top: "W R16·5", bottom: "W R16·6" },
-  { id: "qf-4", top: "W R16·7", bottom: "W R16·8" },
-];
+// A participant is a real team code (resolves via getTeamByCode) or a
+// placeholder like "W89" / "L101" / "T3". Show the short code either way.
+function side(code: string): string {
+  return getTeamByCode(code)?.code ?? code;
+}
 
-const SF_LEFT: Slot = { id: "sf-1", top: "W QF·1", bottom: "W QF·2" };
-const SF_RIGHT: Slot = { id: "sf-2", top: "W QF·3", bottom: "W QF·4" };
+function slot(num: number): Slot {
+  const e = BY_ID.get(`M${num}`);
+  if (!e) {
+    return {
+      matchId: `M${num}`,
+      num,
+      top: "—",
+      bottom: "—",
+      topFull: "—",
+      bottomFull: "—",
+    };
+  }
+  const names = entryDisplayNames(e);
+  return {
+    matchId: e.matchId,
+    num,
+    top: side(e.homeCode),
+    bottom: side(e.awayCode),
+    topFull: names.homeName,
+    bottomFull: names.awayName,
+  };
+}
 
-const FINAL: Slot = { id: "final", top: "W SF·1", bottom: "W SF·2" };
-const THIRD_PLACE: Slot = { id: "third", top: "L SF·1", bottom: "L SF·2" };
+// FIFA bracket topology, by match number.
+const R32 = Array.from({ length: 16 }, (_, i) => slot(73 + i)); // 73–88
+
+// Left half feeds SF Match 101 (via QF 97 + 98); right half feeds SF 102.
+const R16_LEFT = [89, 90, 93, 94].map(slot);
+const R16_RIGHT = [91, 92, 95, 96].map(slot);
+const QF_LEFT = [97, 98].map(slot);
+const QF_RIGHT = [99, 100].map(slot);
+const SF_LEFT = slot(101);
+const SF_RIGHT = slot(102);
+const FINAL = slot(104);
+const THIRD_PLACE = slot(103);
+
+const FINAL_ENTRY = BY_ID.get("M104");
+const FINAL_STADIUM = FINAL_ENTRY
+  ? getStadiumById(FINAL_ENTRY.stadiumId)
+  : undefined;
+const FINAL_DATE = FINAL_ENTRY
+  ? new Date(`${FINAL_ENTRY.dateIso}T19:00:00Z`).toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      timeZone: "America/Los_Angeles",
+    })
+  : "";
 
 function MatchSlot({
   slot,
@@ -86,26 +116,37 @@ function MatchSlot({
       ? "border-2 border-accent shadow-lift-3"
       : "border border-rule shadow-lift-1";
 
+  // For the marquee Final/SF slots use the longer "Winner Match N" labels;
+  // everywhere else stay compact with the short code. Flags resolve from the
+  // short code (real team) and are empty for placeholders like "W74".
+  const top = size === "final" || size === "lg" ? slot.topFull : slot.top;
+  const bottom =
+    size === "final" || size === "lg" ? slot.bottomFull : slot.bottom;
+  const topFlag = flagEmoji(slot.top);
+  const bottomFlag = flagEmoji(slot.bottom);
+
+  const justify =
+    align === "left"
+      ? "justify-start"
+      : align === "right"
+        ? "justify-end"
+        : "justify-center";
+
   return (
     <div className={`rounded-md bg-surface ${border} ${padding}`}>
-      {size === "final" ? (
-        <p
-          className={`font-mono ${codeSize} uppercase tracking-[0.2em] text-accent ${alignText}`}
-        >
-          Final · Champion
-        </p>
-      ) : (
-        <p
-          className={`font-mono ${codeSize} uppercase tracking-widest text-ink-muted ${alignText}`}
-        >
-          {slot.id.replace("-", " · ").toUpperCase()}
-        </p>
-      )}
       <p
-        className={`mt-1.5 font-mono ${teamSize} font-medium uppercase tracking-wider text-ink ${alignText}`}
+        className={`font-mono ${codeSize} uppercase tracking-widest ${
+          size === "final" ? "text-accent tracking-[0.2em]" : "text-ink-muted"
+        } ${alignText}`}
+      >
+        {size === "final" ? `Final · Match ${slot.num}` : `Match ${slot.num}`}
+      </p>
+      <p
+        className={`mt-1.5 flex items-center gap-1.5 ${justify} font-mono ${teamSize} font-medium uppercase tracking-wider text-ink`}
         style={{ fontVariantNumeric: "tabular-nums" }}
       >
-        {slot.top}
+        {topFlag && <span className="text-[1.1em] leading-none">{topFlag}</span>}
+        <span>{top}</span>
       </p>
       <p
         className={`font-mono ${codeSize} uppercase tracking-widest text-ink-muted ${alignText}`}
@@ -113,10 +154,13 @@ function MatchSlot({
         vs
       </p>
       <p
-        className={`font-mono ${teamSize} font-medium uppercase tracking-wider text-ink ${alignText}`}
+        className={`flex items-center gap-1.5 ${justify} font-mono ${teamSize} font-medium uppercase tracking-wider text-ink`}
         style={{ fontVariantNumeric: "tabular-nums" }}
       >
-        {slot.bottom}
+        {bottomFlag && (
+          <span className="text-[1.1em] leading-none">{bottomFlag}</span>
+        )}
+        <span>{bottom}</span>
       </p>
     </div>
   );
@@ -144,7 +188,7 @@ function Column({
       </p>
       <div className="flex flex-1 flex-col justify-around gap-3">
         {slots.map((s) => (
-          <MatchSlot key={s.id} slot={s} align={align} size={size} />
+          <MatchSlot key={s.matchId} slot={s} align={align} size={size} />
         ))}
       </div>
     </div>
@@ -158,7 +202,7 @@ export default function KnockoutBracket() {
       <div className="rounded-lg border border-rule bg-surface p-6 shadow-lift-1">
         <div className="flex flex-col gap-2 md:flex-row md:items-baseline md:justify-between">
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-muted">
-            Round of 32 · 16 matches
+            Round of 32 · Matches 73–88
           </p>
           <p className="font-mono text-[11px] uppercase tracking-wide text-ink-muted">
             Top 2 from each group (24) · 8 best 3rd-place → 32 teams
@@ -167,23 +211,28 @@ export default function KnockoutBracket() {
         <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
           {R32.map((s) => (
             <div
-              key={s.id}
+              key={s.matchId}
               className="rounded border border-rule-soft bg-paper px-2 py-2 text-center"
             >
+              <p className="font-mono text-[8px] uppercase tracking-widest text-ink-muted">
+                Match {s.num}
+              </p>
               <p
-                className="font-mono text-[11px] font-medium uppercase tracking-wider text-ink"
+                className="mt-0.5 flex items-center justify-center gap-1 font-mono text-[11px] font-medium uppercase tracking-wider text-ink"
                 style={{ fontVariantNumeric: "tabular-nums" }}
               >
-                {s.top}
+                {flagEmoji(s.top) && <span>{flagEmoji(s.top)}</span>}
+                <span>{s.top}</span>
               </p>
               <p className="my-0.5 font-mono text-[9px] uppercase tracking-widest text-ink-muted">
                 vs
               </p>
               <p
-                className="font-mono text-[11px] font-medium uppercase tracking-wider text-ink"
+                className="flex items-center justify-center gap-1 font-mono text-[11px] font-medium uppercase tracking-wider text-ink"
                 style={{ fontVariantNumeric: "tabular-nums" }}
               >
-                {s.bottom}
+                {flagEmoji(s.bottom) && <span>{flagEmoji(s.bottom)}</span>}
+                <span>{s.bottom}</span>
               </p>
             </div>
           ))}
@@ -217,7 +266,8 @@ export default function KnockoutBracket() {
                 <MatchSlot slot={FINAL} align="center" size="final" />
               </div>
               <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.2em] text-ink-muted">
-                19 Jul 2026 · MetLife Stadium
+                {FINAL_DATE}
+                {FINAL_STADIUM ? ` · ${FINAL_STADIUM.name}` : ""}
               </p>
             </div>
           </div>
@@ -232,7 +282,7 @@ export default function KnockoutBracket() {
       <div className="mt-12 flex flex-col items-start gap-4 border-t border-rule pt-8 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-muted">
-            Third-place play-off
+            Third-place play-off · Match {THIRD_PLACE.num}
           </p>
           <p className="mt-2 max-w-md text-sm text-ink-body">
             The two semifinal losers meet one day before the final to decide
@@ -240,7 +290,7 @@ export default function KnockoutBracket() {
           </p>
         </div>
         <div className="w-full max-w-xs">
-          <MatchSlot slot={THIRD_PLACE} align="center" size="md" />
+          <MatchSlot slot={THIRD_PLACE} align="center" size="lg" />
         </div>
       </div>
     </div>
